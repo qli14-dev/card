@@ -1,0 +1,28 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#1a1a1a"/>
+
+  <!-- Vignette -->
+  <defs>
+    <radialGradient id="vignette">
+      <stop offset="30%" style="stop-color:#333;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#000;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#vignette)"/>
+
+  <!-- Clown silhouette in background -->
+  <circle cx="400" cy="200" r="80" fill="#2c3e50" opacity="0.5"/>
+  <ellipse cx="400" cy="320" rx="60" ry="100" fill="#2c3e50" opacity="0.5"/>
+
+  <!-- Question -->
+  <text x="400" y="100" font-size="36" fill="#ecf0f1" text-anchor="middle" font-family="Arial">
+    What will you do?
+  </text>
+
+  <!-- Choice indicators (buttons will be added by JavaScript) -->
+  <text x="400" y="480" font-size="20" fill="#95a5a6" text-anchor="middle" font-family="Arial" opacity="0.6">
+    Choose wisely...
+  </text>
+</svg>

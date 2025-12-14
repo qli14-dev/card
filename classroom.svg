@@ -1,0 +1,27 @@
+<svg width="800" height="600" viewBox="0 0 800 600" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#2d3436"/>
+
+  <!-- Floor -->
+  <rect y="400" width="800" height="200" fill="#636e72"/>
+
+  <!-- Desks -->
+  <rect x="100" y="350" width="150" height="80" fill="#8B4513" rx="5"/>
+  <rect x="300" y="350" width="150" height="80" fill="#8B4513" rx="5"/>
+  <rect x="500" y="350" width="150" height="80" fill="#8B4513" rx="5"/>
+
+  <!-- Blackboard -->
+  <rect x="200" y="100" width="400" height="200" fill="#1a1a1a" stroke="#8B4513" stroke-width="10"/>
+  <text x="400" y="200" font-size="40" fill="#fff" text-anchor="middle" font-family="Arial">CLASSROOM</text>
+
+  <!-- Character (stick figure) -->
+  <circle cx="400" cy="280" r="20" fill="#dfe6e9"/>
+  <line x1="400" y1="300" x2="400" y2="350" stroke="#dfe6e9" stroke-width="8"/>
+  <line x1="400" y1="320" x2="370" y2="340" stroke="#dfe6e9" stroke-width="8"/>
+  <line x1="400" y1="320" x2="430" y2="340" stroke="#dfe6e9" stroke-width="8"/>
+  <line x1="400" y1="350" x2="370" y2="390" stroke="#dfe6e9" stroke-width="8"/>
+  <line x1="400" y1="350" x2="430" y2="390" stroke="#dfe6e9" stroke-width="8"/>
+
+  <!-- Shadow effect -->
+  <ellipse cx="400" cy="400" rx="30" ry="10" fill="#000" opacity="0.3"/>
+</svg>
