@@ -505,17 +505,17 @@
             }
         ];
 
-        // Story scenes configuration - using your original uploaded files
+        // Story scenes configuration - awaiting your scene files
         const scenes = {
             classroom: {
-                image: 'schoolcard.svg',  // Your actual file
+                image: 'classroom.svg',  // Upload your classroom scene
                 hasArrow: true,
                 arrowPosition: { bottom: '20%', right: '30%' },
                 nextScene: 'outside',
                 transition: 'pan-desaturate'
             },
             outside: {
-                image: 'sea.svg',  // Your actual file
+                image: 'outside.svg',  // Upload your outside scene
                 text: [
                     'The air feels different out here...',
                     'Something is watching you...',
@@ -527,25 +527,25 @@
                 transition: 'flicker'
             },
             clown: {
-                image: 'seaflowers.svg',  // Your actual file
+                image: 'clown.svg',  // Upload your clown scene
                 clickable: true,
                 nextScene: 'selection',
                 transition: 'vignette'
             },
             selection: {
-                image: 'dishing.svg',  // Your actual file
+                image: 'selection.svg',  // Upload your selection scene
                 choices: [
                     { text: 'Run', nextScene: 'wakeup', class: 'run' },
                     { text: 'Go with him', nextScene: 'eatenbyclown', class: 'go-with' }
                 ]
             },
             wakeup: {
-                image: 'schoolcard.svg',  // Your actual file (reused)
+                image: 'wakeup.svg',  // Upload your wakeup scene
                 transition: 'shake-flash',
                 isEnding: true
             },
             eatenbyclown: {
-                image: 'sea.svg',  // Your actual file (reused)
+                image: 'eatenbyclown.svg',  // Upload your eaten by clown scene
                 transition: 'zoom-blackout',
                 isEnding: true
             }
