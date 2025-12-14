@@ -505,17 +505,17 @@
             }
         ];
 
-        // Story scenes configuration - using your SVG files
+        // Story scenes configuration - using exact file names as specified
         const scenes = {
             classroom: {
-                image: 'schoolcard.svg',
+                image: 'classroom.svg',
                 hasArrow: true,
                 arrowPosition: { bottom: '20%', right: '30%' },
                 nextScene: 'outside',
                 transition: 'pan-desaturate'
             },
             outside: {
-                image: 'sea.svg',
+                image: 'outside.svg',
                 text: [
                     'The air feels different out here...',
                     'Something is watching you...',
@@ -527,25 +527,25 @@
                 transition: 'flicker'
             },
             clown: {
-                image: 'seaflowers.svg',
+                image: 'clown.svg',
                 clickable: true,
                 nextScene: 'selection',
                 transition: 'vignette'
             },
             selection: {
-                image: 'dishing.svg',
+                image: 'selection.svg',
                 choices: [
                     { text: 'Run', nextScene: 'wakeup', class: 'run' },
                     { text: 'Go with him', nextScene: 'eatenbyclown', class: 'go-with' }
                 ]
             },
             wakeup: {
-                image: 'schoolcard.svg',
+                image: 'wakeup.svg',
                 transition: 'shake-flash',
                 isEnding: true
             },
             eatenbyclown: {
-                image: 'sea.svg',
+                image: 'eatenbyclown.svg',
                 transition: 'zoom-blackout',
                 isEnding: true
             }
