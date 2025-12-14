@@ -505,17 +505,17 @@
             }
         ];
 
-        // Story scenes configuration - using exact file names as specified
+        // Story scenes configuration - using your original uploaded files
         const scenes = {
             classroom: {
-                image: 'classroom.svg',
+                image: 'schoolcard.svg',  // Your actual file
                 hasArrow: true,
                 arrowPosition: { bottom: '20%', right: '30%' },
                 nextScene: 'outside',
                 transition: 'pan-desaturate'
             },
             outside: {
-                image: 'outside.svg',
+                image: 'sea.svg',  // Your actual file
                 text: [
                     'The air feels different out here...',
                     'Something is watching you...',
@@ -527,25 +527,25 @@
                 transition: 'flicker'
             },
             clown: {
-                image: 'clown.svg',
+                image: 'seaflowers.svg',  // Your actual file
                 clickable: true,
                 nextScene: 'selection',
                 transition: 'vignette'
             },
             selection: {
-                image: 'selection.svg',
+                image: 'dishing.svg',  // Your actual file
                 choices: [
                     { text: 'Run', nextScene: 'wakeup', class: 'run' },
                     { text: 'Go with him', nextScene: 'eatenbyclown', class: 'go-with' }
                 ]
             },
             wakeup: {
-                image: 'wakeup.svg',
+                image: 'schoolcard.svg',  // Your actual file (reused)
                 transition: 'shake-flash',
                 isEnding: true
             },
             eatenbyclown: {
-                image: 'eatenbyclown.svg',
+                image: 'sea.svg',  // Your actual file (reused)
                 transition: 'zoom-blackout',
                 isEnding: true
             }
