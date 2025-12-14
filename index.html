@@ -39,14 +39,23 @@
             width: 100%;
             height: 100%;
             border-radius: 20px;
-            cursor: pointer;
+            cursor: grab;
             user-select: none;
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             will-change: transform;
         }
 
-        .card:hover {
-            transform: scale(1.02) translateY(-5px);
+        .card.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+
+        .card.dismissed-left {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+
+        .card.dismissed-right {
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
         }
 
         .card-inner {
@@ -86,6 +95,89 @@
             font-size: 14px;
             color: #666;
             line-height: 1.5;
+        }
+
+        /* Glow effects for cards */
+        .card[data-index="0"] .card-inner {
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.2),
+                0 0 60px rgba(255, 107, 107, 0.6),
+                0 0 100px rgba(255, 107, 107, 0.4);
+        }
+
+        .card[data-index="1"] .card-inner {
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.2),
+                0 0 60px rgba(78, 205, 196, 0.6),
+                0 0 100px rgba(78, 205, 196, 0.4);
+        }
+
+        .card[data-index="2"] .card-inner {
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.2),
+                0 0 60px rgba(255, 159, 243, 0.6),
+                0 0 100px rgba(255, 159, 243, 0.4);
+        }
+
+        .card[data-index="3"] .card-inner {
+            box-shadow:
+                0 10px 40px rgba(0, 0, 0, 0.2),
+                0 0 60px rgba(255, 184, 77, 0.6),
+                0 0 100px rgba(255, 184, 77, 0.4);
+        }
+
+        /* Background colors matching theme */
+        .card[data-index="0"] .card-content {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+
+        .card[data-index="1"] .card-content {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+        }
+
+        .card[data-index="2"] .card-content {
+            background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%);
+            color: white;
+        }
+
+        .card[data-index="3"] .card-content {
+            background: linear-gradient(135deg, #ffb84d 0%, #f97f51 100%);
+            color: white;
+        }
+
+        .card[data-index="0"] .card-title,
+        .card[data-index="1"] .card-title,
+        .card[data-index="2"] .card-title,
+        .card[data-index="3"] .card-title {
+            color: white;
+        }
+
+        .card[data-index="0"] .card-description,
+        .card[data-index="1"] .card-description,
+        .card[data-index="2"] .card-description,
+        .card[data-index="3"] .card-description {
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .instructions {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            font-size: 14px;
+            color: #333;
+            max-width: 90%;
+        }
+
+        .instructions strong {
+            color: #667eea;
         }
 
         /* Scene Container */
@@ -359,76 +451,16 @@
             opacity: 1;
             pointer-events: all;
         }
-
-        /* Glow effects for cards */
-        .card[data-index="0"] .card-inner {
-            box-shadow:
-                0 10px 40px rgba(0, 0, 0, 0.2),
-                0 0 60px rgba(255, 107, 107, 0.6),
-                0 0 100px rgba(255, 107, 107, 0.4);
-        }
-
-        .card[data-index="1"] .card-inner {
-            box-shadow:
-                0 10px 40px rgba(0, 0, 0, 0.2),
-                0 0 60px rgba(78, 205, 196, 0.6),
-                0 0 100px rgba(78, 205, 196, 0.4);
-        }
-
-        .card[data-index="2"] .card-inner {
-            box-shadow:
-                0 10px 40px rgba(0, 0, 0, 0.2),
-                0 0 60px rgba(255, 159, 243, 0.6),
-                0 0 100px rgba(255, 159, 243, 0.4);
-        }
-
-        .card[data-index="3"] .card-inner {
-            box-shadow:
-                0 10px 40px rgba(0, 0, 0, 0.2),
-                0 0 60px rgba(255, 184, 77, 0.6),
-                0 0 100px rgba(255, 184, 77, 0.4);
-        }
-
-        /* Background colors matching theme */
-        .card[data-index="0"] .card-content {
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-            color: white;
-        }
-
-        .card[data-index="1"] .card-content {
-            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
-            color: white;
-        }
-
-        .card[data-index="2"] .card-content {
-            background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%);
-            color: white;
-        }
-
-        .card[data-index="3"] .card-content {
-            background: linear-gradient(135deg, #ffb84d 0%, #f97f51 100%);
-            color: white;
-        }
-
-        .card[data-index="0"] .card-title,
-        .card[data-index="1"] .card-title,
-        .card[data-index="2"] .card-title,
-        .card[data-index="3"] .card-title {
-            color: white;
-        }
-
-        .card[data-index="0"] .card-description,
-        .card[data-index="1"] .card-description,
-        .card[data-index="2"] .card-description,
-        .card[data-index="3"] .card-description {
-            color: rgba(255, 255, 255, 0.9);
-        }
     </style>
 </head>
 <body>
     <!-- Card Selection Screen -->
     <div class="container">
         <div class="card-stack" id="cardStack"></div>
+    </div>
+
+    <div class="instructions">
+        <strong>Swipe left</strong> to dismiss | <strong>Swipe right</strong> to go back | <strong>Click</strong> to explore
     </div>
 
     <!-- Blur Background -->
@@ -519,31 +551,61 @@
             }
         };
 
-        class StoryEngine {
-            constructor() {
-                this.currentScene = null;
-                this.sceneContainer = document.getElementById('sceneContainer');
-                this.sceneContent = document.getElementById('sceneContent');
-                this.blurBg = document.getElementById('blurBg');
-                this.vignette = document.getElementById('vignette');
-                this.flash = document.getElementById('flash');
-                this.blackScreen = document.getElementById('blackScreen');
+        class CardStack {
+            constructor(container, storyEngine) {
+                this.container = container;
+                this.storyEngine = storyEngine;
+                this.currentIndex = 0;
+                this.history = [];
+                this.cards = [];
+                this.isDragging = false;
+                this.startX = 0;
+                this.startY = 0;
+                this.currentX = 0;
+                this.currentY = 0;
+                this.threshold = 100; // pixels to drag before dismissing
+                this.clickThreshold = 10; // pixels - if moved less than this, consider it a click
 
-                this.initCards();
+                this.init();
             }
 
-            initCards() {
-                const cardStack = document.getElementById('cardStack');
-                cardsData.forEach((cardData, index) => {
-                    const card = this.createCard(cardData, index);
-                    cardStack.appendChild(card);
-                });
+            init() {
+                this.renderCards();
+                this.attachEvents();
             }
 
-            createCard(data, index) {
+            renderCards() {
+                this.container.innerHTML = '';
+                this.cards = [];
+
+                // Render 3 cards: current, next, and next+1 for depth
+                for (let i = 2; i >= 0; i--) {
+                    const dataIndex = (this.currentIndex + i) % cardsData.length;
+                    const card = this.createCard(cardsData[dataIndex], dataIndex, i);
+                    this.container.appendChild(card);
+                    this.cards.push(card);
+
+                    // Apply stacking transform
+                    const scale = 1 - (i * 0.05);
+                    const translateY = i * 10;
+                    card.style.transform = `scale(${scale}) translateY(${translateY}px)`;
+                    card.style.zIndex = 100 - i;
+
+                    // Only make the top card interactive
+                    if (i === 0) {
+                        card.style.opacity = '1';
+                    } else {
+                        card.style.opacity = '0.7';
+                    }
+                }
+            }
+
+            createCard(data, dataIndex, stackIndex) {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.setAttribute('data-index', index);
+                card.setAttribute('data-index', dataIndex);
+                card.setAttribute('data-stack-index', stackIndex);
+                card.setAttribute('data-scene', data.scene || '');
 
                 card.innerHTML = `
                     <div class="card-inner">
@@ -555,11 +617,133 @@
                     </div>
                 `;
 
-                if (data.scene) {
-                    card.addEventListener('click', () => this.enterScene(data.scene, card));
+                return card;
+            }
+
+            attachEvents() {
+                this.container.addEventListener('mousedown', this.onDragStart.bind(this));
+                document.addEventListener('mousemove', this.onDragMove.bind(this));
+                document.addEventListener('mouseup', this.onDragEnd.bind(this));
+
+                // Touch events for mobile
+                this.container.addEventListener('touchstart', this.onDragStart.bind(this));
+                document.addEventListener('touchmove', this.onDragMove.bind(this));
+                document.addEventListener('touchend', this.onDragEnd.bind(this));
+            }
+
+            onDragStart(e) {
+                const target = e.target.closest('.card');
+                if (!target || target.getAttribute('data-stack-index') !== '0') return;
+
+                this.isDragging = true;
+                this.activeCard = target;
+                this.activeCard.classList.add('dragging');
+
+                const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+                this.startX = clientX;
+                this.startY = clientY;
+                this.currentX = 0;
+                this.currentY = 0;
+            }
+
+            onDragMove(e) {
+                if (!this.isDragging) return;
+                e.preventDefault();
+
+                const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+                this.currentX = clientX - this.startX;
+                this.currentY = clientY - this.startY;
+
+                const rotation = this.currentX / 20;
+                const opacity = 1 - Math.abs(this.currentX) / 300;
+
+                this.activeCard.style.transform = `
+                    translateX(${this.currentX}px)
+                    translateY(${this.currentY}px)
+                    rotate(${rotation}deg)
+                `;
+                this.activeCard.style.opacity = opacity;
+            }
+
+            onDragEnd(e) {
+                if (!this.isDragging) return;
+
+                this.isDragging = false;
+                this.activeCard.classList.remove('dragging');
+
+                const totalMovement = Math.sqrt(this.currentX * this.currentX + this.currentY * this.currentY);
+
+                // Check if it was a click (minimal movement)
+                if (totalMovement < this.clickThreshold) {
+                    this.handleClick();
+                    this.snapBack();
+                    return;
                 }
 
-                return card;
+                const draggedLeft = this.currentX < -this.threshold;
+                const draggedRight = this.currentX > this.threshold;
+
+                if (draggedLeft) {
+                    // Dismiss to the left - show next card
+                    this.dismissCard('left');
+                } else if (draggedRight) {
+                    // Dismiss to the right - go to previous card
+                    this.dismissCard('right');
+                } else {
+                    // Snap back
+                    this.snapBack();
+                }
+            }
+
+            handleClick() {
+                const sceneName = this.activeCard.getAttribute('data-scene');
+                if (sceneName) {
+                    this.storyEngine.enterScene(sceneName, this.activeCard);
+                }
+            }
+
+            snapBack() {
+                this.activeCard.style.transform = '';
+                this.activeCard.style.opacity = '1';
+            }
+
+            dismissCard(direction) {
+                const translateX = direction === 'left' ? -1000 : 1000;
+                const rotation = direction === 'left' ? -30 : 30;
+
+                this.activeCard.classList.add(`dismissed-${direction}`);
+                this.activeCard.style.transform = `translateX(${translateX}px) rotate(${rotation}deg)`;
+                this.activeCard.style.opacity = '0';
+
+                setTimeout(() => {
+                    if (direction === 'left') {
+                        // Move to next card
+                        this.history.push(this.currentIndex);
+                        this.currentIndex = (this.currentIndex + 1) % cardsData.length;
+                    } else {
+                        // Go to previous card
+                        if (this.history.length > 0) {
+                            this.currentIndex = this.history.pop();
+                        }
+                    }
+                    this.renderCards();
+                }, 300);
+            }
+        }
+
+        class StoryEngine {
+            constructor() {
+                this.currentScene = null;
+                this.sceneContainer = document.getElementById('sceneContainer');
+                this.sceneContent = document.getElementById('sceneContent');
+                this.blurBg = document.getElementById('blurBg');
+                this.vignette = document.getElementById('vignette');
+                this.flash = document.getElementById('flash');
+                this.blackScreen = document.getElementById('blackScreen');
             }
 
             enterScene(sceneName, card) {
@@ -787,8 +971,9 @@
             }
         }
 
-        // Initialize the story engine
+        // Initialize both systems
         const storyEngine = new StoryEngine();
+        const cardStack = new CardStack(document.getElementById('cardStack'), storyEngine);
     </script>
 </body>
 </html>
