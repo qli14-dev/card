@@ -73,6 +73,13 @@
             height: 70%;
             object-fit: cover;
             display: block;
+            background: #f0f0f0;
+        }
+
+        .card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .card-content {
@@ -269,13 +276,16 @@
 
                 card.innerHTML = `
                     <div class="card-inner">
-                        <img src="${data.image}" alt="${data.title}" class="card-image">
+                        <img src="${data.image}" alt="${data.title}" class="card-image" onerror="console.error('Failed to load: ${data.image}')">
                         <div class="card-content">
                             <h2 class="card-title">${data.title}</h2>
                             <p class="card-description">${data.description}</p>
                         </div>
                     </div>
                 `;
+
+                // Debug: Log when card is created
+                console.log('Created card with image:', data.image);
 
                 return card;
             }

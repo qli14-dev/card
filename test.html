@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Test</title>
+    <style>
+        img {
+            max-width: 300px;
+            margin: 20px;
+            border: 2px solid #333;
+        }
+        body {
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        h3 {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SVG Image Test</h1>
+    <p>If you can see the images below, the SVG files are loading correctly:</p>
+
+    <h3>School Card:</h3>
+    <img src="schoolcard.svg" alt="School Card" onerror="this.innerHTML='Failed to load'">
+
+    <h3>Sea:</h3>
+    <img src="sea.svg" alt="Sea">
+
+    <h3>Sea Flowers:</h3>
+    <img src="seaflowers.svg" alt="Sea Flowers">
+
+    <h3>Dishing:</h3>
+    <img src="dishing.svg" alt="Dishing">
+</body>
+</html>
