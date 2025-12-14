@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Interaction Animation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Card Mode */
+        #card-mode {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        #card-mode.hidden {
+            display: none;
+        }
+
+        .card-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+        }
+
+        .card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            cursor: grab;
+            user-select: none;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            overflow: hidden;
+        }
+
+        .card.dragging {
+            cursor: grabbing;
+            transition: none;
+        }
+
+        .card.animating {
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .card-content {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        .card-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 1;
+        }
+
+        .card-text {
+            position: relative;
+            z-index: 2;
+            color: white;
+            text-align: center;
+        }
+
+        .card-title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .card-subtitle {
+            font-size: 18px;
+            opacity: 0.9;
+            text-shadow: 1px 1px 5px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Theme colors and glows */
+        .card[data-theme="school"] {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 20px 60px rgba(240, 147, 251, 0.6),
+                        0 0 80px rgba(245, 87, 108, 0.4);
+        }
+
+        .card[data-theme="sea"] {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            box-shadow: 0 20px 60px rgba(79, 172, 254, 0.6),
+                        0 0 80px rgba(0, 242, 254, 0.4);
+        }
+
+        .card[data-theme="safflowers"] {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            box-shadow: 0 20px 60px rgba(250, 112, 154, 0.6),
+                        0 0 80px rgba(254, 225, 64, 0.4);
+        }
+
+        .card[data-theme="dishini"] {
+            background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+            box-shadow: 0 20px 60px rgba(48, 207, 208, 0.6),
+                        0 0 80px rgba(51, 8, 103, 0.4);
+        }
+
+        /* Story Mode */
+        #story-mode {
+            width: 100%;
+            height: 100vh;
+            display: none;
+            position: relative;
+            background: #000;
+        }
+
+        #story-mode.active {
+            display: block;
+        }
+
+        .svg-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: none;
+        }
+
+        .svg-container.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .svg-container svg {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+        }
+
+        /* Text animation for outside.svg */
+        .svg-container[data-scene="outside"] text {
+            opacity: 0;
+            animation: fadeInText 2s ease-in forwards;
+        }
+
+        @keyframes fadeInText {
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Clown zoom animation */
+        .svg-container[data-scene="eatenbyclown"] {
+            background: #000;
+        }
+
+        .clown-zoom {
+            animation: clownZoom 3s ease-in forwards;
+        }
+
+        @keyframes clownZoom {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(3);
+            }
+            75% {
+                transform: scale(3);
+                filter: brightness(1);
+            }
+            100% {
+                transform: scale(3);
+                filter: brightness(0);
+            }
+        }
+
+        /* Clickable areas */
+        .clickable {
+            cursor: pointer;
+        }
+
+        .clickable:hover {
+            opacity: 0.8;
+        }
+
+        /* Back button */
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- Card Mode -->
+    <div id="card-mode">
+        <div class="card-container" id="card-container"></div>
+    </div>
+
+    <!-- Story Mode -->
+    <div id="story-mode">
+        <button class="back-button" id="back-button">← Back to Cards</button>
+
+        <div class="svg-container" data-scene="classroom" id="scene-classroom"></div>
+        <div class="svg-container" data-scene="outside" id="scene-outside"></div>
+        <div class="svg-container" data-scene="clown" id="scene-clown"></div>
+        <div class="svg-container" data-scene="selection" id="scene-selection"></div>
+        <div class="svg-container" data-scene="wakeup" id="scene-wakeup"></div>
+        <div class="svg-container" data-scene="eatenbyclown" id="scene-eatenbyclown"></div>
+    </div>
+
+    <script>
+        // Card data
+        const cards = [
+            {
+                id: 'school',
+                title: 'School Days',
+                subtitle: 'A mysterious journey begins',
+                image: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800',
+                theme: 'school',
+                svg: 'schoolcard.svg',
+                clickable: true
+            },
+            {
+                id: 'sea',
+                title: 'Ocean Dreams',
+                subtitle: 'Dive into the deep blue',
+                image: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=800',
+                theme: 'sea',
+                svg: 'sea.svg',
+                clickable: false
+            },
+            {
+                id: 'safflowers',
+                title: 'Safflower Fields',
+                subtitle: 'Golden petals in the breeze',
+                image: 'https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=800',
+                theme: 'safflowers',
+                svg: 'seaflowers.svg',
+                clickable: false
+            },
+            {
+                id: 'dishini',
+                title: 'Cosmic Wonder',
+                subtitle: 'Explore the universe within',
+                image: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800',
+                theme: 'dishini',
+                svg: 'dishing.svg',
+                clickable: false
+            }
+        ];
+
+        let currentIndex = 0;
+        let cardHistory = [];
+        let isDragging = false;
+        let startX = 0;
+        let currentX = 0;
+        let dragThreshold = 100;
+
+        // Initialize
+        const cardContainer = document.getElementById('card-container');
+        const cardMode = document.getElementById('card-mode');
+        const storyMode = document.getElementById('story-mode');
+        const backButton = document.getElementById('back-button');
+
+        // Create initial cards
+        function createCard(cardData, zIndex) {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.setAttribute('data-theme', cardData.theme);
+            card.setAttribute('data-id', cardData.id);
+            card.style.zIndex = zIndex;
+            card.style.transform = `scale(${1 - (zIndex * 0.05)}) translateY(${zIndex * 10}px)`;
+
+            // Use SVG as background image
+            card.innerHTML = `
+                <div class="card-content">
+                    <img src="${cardData.svg}" class="card-image" alt="${cardData.title}">
+                    ${cardData.clickable ? '<div class="card-overlay"></div>' : ''}
+                    ${cardData.clickable ? `<div class="card-text"><div class="card-title">${cardData.title}</div><div class="card-subtitle">Click to enter the story</div></div>` : ''}
+                </div>
+            `;
+
+            // Add click handler for School Days card
+            if (cardData.clickable) {
+                card.addEventListener('click', (e) => {
+                    if (!isDragging) {
+                        enterStoryMode();
+                    }
+                });
+            }
+
+            return card;
+        }
+
+        function renderCards() {
+            cardContainer.innerHTML = '';
+            const cardsToShow = 3;
+
+            for (let i = 0; i < cardsToShow; i++) {
+                const cardIndex = (currentIndex + i) % cards.length;
+                const card = createCard(cards[cardIndex], cardsToShow - i - 1);
+
+                if (i === 0) {
+                    addDragListeners(card);
+                }
+
+                cardContainer.appendChild(card);
+            }
+        }
+
+        function addDragListeners(card) {
+            let startTime = 0;
+
+            card.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.clientX;
+                startTime = Date.now();
+                card.classList.add('dragging');
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                currentX = e.clientX - startX;
+                const rotation = currentX / 20;
+                card.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
+            });
+
+            document.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+
+                const dragTime = Date.now() - startTime;
+                isDragging = false;
+                card.classList.remove('dragging');
+                card.classList.add('animating');
+
+                // Dragged left (dismiss card)
+                if (currentX < -dragThreshold) {
+                    card.style.transform = `translateX(-150%) rotate(-30deg)`;
+                    setTimeout(() => {
+                        cardHistory.push(currentIndex);
+                        currentIndex = (currentIndex + 1) % cards.length;
+                        renderCards();
+                    }, 300);
+                }
+                // Dragged right (go back)
+                else if (currentX > dragThreshold && cardHistory.length > 0) {
+                    card.style.transform = `translateX(150%) rotate(30deg)`;
+                    setTimeout(() => {
+                        currentIndex = cardHistory.pop();
+                        renderCards();
+                    }, 300);
+                }
+                // Snap back
+                else {
+                    card.style.transform = '';
+                    setTimeout(() => {
+                        card.classList.remove('animating');
+                    }, 300);
+                }
+
+                currentX = 0;
+            });
+
+            // Touch support
+            card.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                startX = e.touches[0].clientX;
+                startTime = Date.now();
+                card.classList.add('dragging');
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+
+                currentX = e.touches[0].clientX - startX;
+                const rotation = currentX / 20;
+                card.style.transform = `translateX(${currentX}px) rotate(${rotation}deg)`;
+            });
+
+            document.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+
+                isDragging = false;
+                card.classList.remove('dragging');
+                card.classList.add('animating');
+
+                if (currentX < -dragThreshold) {
+                    card.style.transform = `translateX(-150%) rotate(-30deg)`;
+                    setTimeout(() => {
+                        cardHistory.push(currentIndex);
+                        currentIndex = (currentIndex + 1) % cards.length;
+                        renderCards();
+                    }, 300);
+                } else if (currentX > dragThreshold && cardHistory.length > 0) {
+                    card.style.transform = `translateX(150%) rotate(30deg)`;
+                    setTimeout(() => {
+                        currentIndex = cardHistory.pop();
+                        renderCards();
+                    }, 300);
+                } else {
+                    card.style.transform = '';
+                    setTimeout(() => {
+                        card.classList.remove('animating');
+                    }, 300);
+                }
+
+                currentX = 0;
+            });
+        }
+
+        // Story Mode Functions
+        function enterStoryMode() {
+            cardMode.classList.add('hidden');
+            storyMode.classList.add('active');
+            showScene('classroom');
+        }
+
+        function exitStoryMode() {
+            storyMode.classList.remove('active');
+            cardMode.classList.remove('hidden');
+            hideAllScenes();
+        }
+
+        function hideAllScenes() {
+            document.querySelectorAll('.svg-container').forEach(container => {
+                container.classList.remove('active');
+                container.innerHTML = '';
+            });
+        }
+
+        async function showScene(sceneName) {
+            hideAllScenes();
+            const sceneContainer = document.getElementById(`scene-${sceneName}`);
+            sceneContainer.classList.add('active');
+
+            // Load SVG content
+            try {
+                const response = await fetch(`${sceneName}.svg`);
+                const svgText = await response.text();
+                sceneContainer.innerHTML = svgText;
+
+                // Add scene-specific interactions
+                setupSceneInteractions(sceneName, sceneContainer);
+            } catch (error) {
+                console.error('Error loading scene:', error);
+            }
+        }
+
+        function setupSceneInteractions(sceneName, container) {
+            const svg = container.querySelector('svg');
+            if (!svg) return;
+
+            switch(sceneName) {
+                case 'classroom':
+                    // Click red arrow to go to outside
+                    setTimeout(() => {
+                        svg.addEventListener('click', () => {
+                            showScene('outside');
+                        });
+                    }, 100);
+                    break;
+
+                case 'outside':
+                    // Text appears slowly (handled by CSS animation)
+                    // Click red arrow to go to clown
+                    setTimeout(() => {
+                        svg.addEventListener('click', () => {
+                            showScene('clown');
+                        });
+                    }, 100);
+                    break;
+
+                case 'clown':
+                    // Click to go to selection
+                    setTimeout(() => {
+                        svg.addEventListener('click', () => {
+                            showScene('selection');
+                        });
+                    }, 100);
+                    break;
+
+                case 'selection':
+                    // Find and setup button clicks
+                    setTimeout(() => {
+                        // This is a simplified approach - we'll click anywhere on left/right halves
+                        svg.addEventListener('click', (e) => {
+                            const rect = svg.getBoundingClientRect();
+                            const clickX = e.clientX - rect.left;
+                            const midPoint = rect.width / 2;
+
+                            // Left side = Run (wakeup)
+                            if (clickX < midPoint) {
+                                showScene('wakeup');
+                            }
+                            // Right side = Go with him (eatenbyclown)
+                            else {
+                                showScene('eatenbyclown');
+                            }
+                        });
+                    }, 100);
+                    break;
+
+                case 'eatenbyclown':
+                    // Clown zoom animation
+                    setTimeout(() => {
+                        const clownElement = svg.querySelector('svg') || svg;
+                        clownElement.classList.add('clown-zoom');
+                    }, 100);
+                    break;
+
+                case 'wakeup':
+                    // End scene - click to return to cards
+                    setTimeout(() => {
+                        svg.addEventListener('click', () => {
+                            exitStoryMode();
+                        });
+                    }, 100);
+                    break;
+            }
+        }
+
+        // Back button
+        backButton.addEventListener('click', exitStoryMode);
+
+        // Initialize cards
+        renderCards();
+    </script>
+</body>
+</html>
