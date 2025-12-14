@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Card Interaction Animation</title>
+    <title>Interactive Horror Story</title>
     <style>
         * {
             margin: 0;
@@ -39,23 +39,14 @@
             width: 100%;
             height: 100%;
             border-radius: 20px;
-            cursor: grab;
+            cursor: pointer;
             user-select: none;
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             will-change: transform;
         }
 
-        .card.dragging {
-            cursor: grabbing;
-            transition: none;
-        }
-
-        .card.dismissed-left {
-            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-        }
-
-        .card.dismissed-right {
-            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        .card:hover {
+            transform: scale(1.02) translateY(-5px);
         }
 
         .card-inner {
@@ -74,12 +65,6 @@
             object-fit: cover;
             display: block;
             background: #f0f0f0;
-        }
-
-        .card-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
         }
 
         .card-content {
@@ -103,7 +88,279 @@
             line-height: 1.5;
         }
 
-        /* Glow effects for each card */
+        /* Scene Container */
+        .scene-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 1000;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .scene-container.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .scene-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .scene-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Text Animation */
+        .scene-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            width: 80%;
+            opacity: 0;
+        }
+
+        .scene-text.typing {
+            opacity: 1;
+        }
+
+        .text-line {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s ease forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Red Arrow */
+        .red-arrow {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: red;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: pulse 2s infinite;
+            z-index: 10;
+        }
+
+        .red-arrow::after {
+            content: '→';
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 20px rgba(255, 0, 0, 0);
+            }
+        }
+
+        /* Buttons */
+        .choice-buttons {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            opacity: 0;
+            animation: fadeIn 1s ease forwards 1s;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .choice-btn {
+            padding: 15px 30px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .choice-btn.run {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .choice-btn.go-with {
+            background: #f44336;
+            color: white;
+        }
+
+        .choice-btn:hover {
+            transform: scale(1.1);
+        }
+
+        /* Vignette Effect */
+        .vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 30%, black 100%);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+        }
+
+        .vignette.active {
+            opacity: 0.8;
+        }
+
+        /* Screen Effects */
+        .screen-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .flash {
+            background: white;
+            opacity: 0;
+        }
+
+        .flash.active {
+            animation: flashEffect 0.3s ease;
+        }
+
+        @keyframes flashEffect {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .shake {
+            animation: none;
+        }
+
+        .shake.active {
+            animation: shakeEffect 0.5s ease;
+        }
+
+        @keyframes shakeEffect {
+            0%, 100% { transform: translate(0, 0); }
+            10%, 30%, 50%, 70%, 90% { transform: translate(-10px, -10px); }
+            20%, 40%, 60%, 80% { transform: translate(10px, 10px); }
+        }
+
+        /* Flicker Effect */
+        .flicker {
+            animation: none;
+        }
+
+        .flicker.active {
+            animation: flickerEffect 0.5s ease;
+        }
+
+        @keyframes flickerEffect {
+            0%, 100% { opacity: 1; }
+            25%, 75% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Zoom Animation */
+        .zoom-in {
+            animation: none;
+        }
+
+        .zoom-in.active {
+            animation: zoomInEffect 3s ease forwards;
+        }
+
+        @keyframes zoomInEffect {
+            0% { transform: scale(1); }
+            100% { transform: scale(10); }
+        }
+
+        /* Desaturate */
+        .desaturate {
+            filter: saturate(1);
+            transition: filter 1s ease;
+        }
+
+        .desaturate.active {
+            filter: saturate(0);
+        }
+
+        /* Blur Background */
+        .blur-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0);
+            backdrop-filter: blur(0px);
+            transition: all 0.5s ease;
+            z-index: 999;
+            pointer-events: none;
+        }
+
+        .blur-bg.active {
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+        }
+
+        /* Black Screen */
+        .black-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            z-index: 10000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 2s ease;
+        }
+
+        .black-screen.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Glow effects for cards */
         .card[data-index="0"] .card-inner {
             box-shadow:
                 0 10px 40px rgba(0, 0, 0, 0.2),
@@ -166,117 +423,131 @@
         .card[data-index="3"] .card-description {
             color: rgba(255, 255, 255, 0.9);
         }
-
-        .instructions {
-            position: fixed;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 15px 30px;
-            border-radius: 30px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-            text-align: center;
-            font-size: 14px;
-            color: #333;
-            max-width: 90%;
-        }
-
-        .instructions strong {
-            color: #667eea;
-        }
     </style>
 </head>
 <body>
+    <!-- Card Selection Screen -->
     <div class="container">
         <div class="card-stack" id="cardStack"></div>
     </div>
 
-    <div class="instructions">
-        <strong>Drag left</strong> to dismiss | <strong>Drag right</strong> to go back
+    <!-- Blur Background -->
+    <div class="blur-bg" id="blurBg"></div>
+
+    <!-- Scene Container -->
+    <div class="scene-container" id="sceneContainer">
+        <div class="scene-content" id="sceneContent"></div>
+        <div class="vignette" id="vignette"></div>
     </div>
 
+    <!-- Screen Effects -->
+    <div class="screen-effect flash" id="flash"></div>
+    <div class="black-screen" id="blackScreen"></div>
+
     <script>
-        // Card data with SVG files
+        // Card data
         const cardsData = [
             {
                 image: 'schoolcard.svg',
                 title: 'School Days',
-                description: 'a horror day'
+                description: 'a horror day',
+                scene: 'classroom'
             },
             {
                 image: 'sea.svg',
                 title: 'Ocean Waves',
-                description: 'The calming rhythm of the sea'
+                description: 'The calming rhythm of the sea',
+                scene: null
             },
             {
                 image: 'seaflowers.svg',
                 title: 'Sea Flowers',
-                description: 'Beautiful marine botanicals'
+                description: 'Beautiful marine botanicals',
+                scene: null
             },
             {
                 image: 'dishing.svg',
                 title: 'Disney fire works display',
-                description: 'a beautiful fireworks'
+                description: 'a beautiful fireworks',
+                scene: null
             }
         ];
 
-        class CardStack {
-            constructor(container) {
-                this.container = container;
-                this.currentIndex = 0;
-                this.history = [];
-                this.cards = [];
-                this.isDragging = false;
-                this.startX = 0;
-                this.startY = 0;
-                this.currentX = 0;
-                this.currentY = 0;
-                this.threshold = 100; // pixels to drag before dismissing
+        // Story scenes configuration
+        const scenes = {
+            classroom: {
+                image: 'classroom.svg',
+                hasArrow: true,
+                arrowPosition: { bottom: '20%', right: '30%' },
+                nextScene: 'outside',
+                transition: 'pan-desaturate'
+            },
+            outside: {
+                image: 'outside.svg',
+                text: [
+                    'The air feels different out here...',
+                    'Something is watching you...',
+                    'You should have stayed inside...'
+                ],
+                hasArrow: true,
+                arrowPosition: { bottom: '15%', left: '50%', transform: 'translateX(-50%)' },
+                nextScene: 'clown',
+                transition: 'flicker'
+            },
+            clown: {
+                image: 'clown.svg',
+                clickable: true,
+                nextScene: 'selection',
+                transition: 'vignette'
+            },
+            selection: {
+                image: 'selection.svg',
+                choices: [
+                    { text: 'Run', nextScene: 'wakeup', class: 'run' },
+                    { text: 'Go with him', nextScene: 'eatenbyclown', class: 'go-with' }
+                ]
+            },
+            wakeup: {
+                image: 'wakeup.svg',
+                transition: 'shake-flash',
+                isEnding: true
+            },
+            eatenbyclown: {
+                image: 'eatenbyclown.svg',
+                transition: 'zoom-blackout',
+                isEnding: true
+            }
+        };
 
-                this.init();
+        class StoryEngine {
+            constructor() {
+                this.currentScene = null;
+                this.sceneContainer = document.getElementById('sceneContainer');
+                this.sceneContent = document.getElementById('sceneContent');
+                this.blurBg = document.getElementById('blurBg');
+                this.vignette = document.getElementById('vignette');
+                this.flash = document.getElementById('flash');
+                this.blackScreen = document.getElementById('blackScreen');
+
+                this.initCards();
             }
 
-            init() {
-                this.renderCards();
-                this.attachEvents();
+            initCards() {
+                const cardStack = document.getElementById('cardStack');
+                cardsData.forEach((cardData, index) => {
+                    const card = this.createCard(cardData, index);
+                    cardStack.appendChild(card);
+                });
             }
 
-            renderCards() {
-                this.container.innerHTML = '';
-                this.cards = [];
-
-                // Render 3 cards: current, next, and next+1 for depth
-                for (let i = 2; i >= 0; i--) {
-                    const dataIndex = (this.currentIndex + i) % cardsData.length;
-                    const card = this.createCard(cardsData[dataIndex], dataIndex, i);
-                    this.container.appendChild(card);
-                    this.cards.push(card);
-
-                    // Apply stacking transform
-                    const scale = 1 - (i * 0.05);
-                    const translateY = i * 10;
-                    card.style.transform = `scale(${scale}) translateY(${translateY}px)`;
-                    card.style.zIndex = 100 - i;
-
-                    // Only make the top card draggable
-                    if (i === 0) {
-                        card.style.opacity = '1';
-                    } else {
-                        card.style.opacity = '0.7';
-                    }
-                }
-            }
-
-            createCard(data, dataIndex, stackIndex) {
+            createCard(data, index) {
                 const card = document.createElement('div');
                 card.className = 'card';
-                card.setAttribute('data-index', dataIndex);
-                card.setAttribute('data-stack-index', stackIndex);
+                card.setAttribute('data-index', index);
 
                 card.innerHTML = `
                     <div class="card-inner">
-                        <img src="${data.image}" alt="${data.title}" class="card-image" onerror="console.error('Failed to load: ${data.image}')">
+                        <img src="${data.image}" alt="${data.title}" class="card-image">
                         <div class="card-content">
                             <h2 class="card-title">${data.title}</h2>
                             <p class="card-description">${data.description}</p>
@@ -284,113 +555,240 @@
                     </div>
                 `;
 
-                // Debug: Log when card is created
-                console.log('Created card with image:', data.image);
+                if (data.scene) {
+                    card.addEventListener('click', () => this.enterScene(data.scene, card));
+                }
 
                 return card;
             }
 
-            attachEvents() {
-                this.container.addEventListener('mousedown', this.onDragStart.bind(this));
-                document.addEventListener('mousemove', this.onDragMove.bind(this));
-                document.addEventListener('mouseup', this.onDragEnd.bind(this));
+            enterScene(sceneName, card) {
+                const scene = scenes[sceneName];
+                if (!scene) return;
 
-                // Touch events for mobile
-                this.container.addEventListener('touchstart', this.onDragStart.bind(this));
-                document.addEventListener('touchmove', this.onDragMove.bind(this));
-                document.addEventListener('touchend', this.onDragEnd.bind(this));
+                // Activate blur background
+                this.blurBg.classList.add('active');
+
+                // Animate card
+                if (card) {
+                    card.style.transform = 'scale(1.1) rotateY(5deg)';
+                    card.style.transition = 'all 0.5s ease';
+                }
+
+                // Show scene after brief delay
+                setTimeout(() => {
+                    this.sceneContainer.classList.add('active');
+                    this.renderScene(sceneName);
+                }, 500);
             }
 
-            onDragStart(e) {
-                const target = e.target.closest('.card');
-                if (!target || target.getAttribute('data-stack-index') !== '0') return;
+            renderScene(sceneName) {
+                const scene = scenes[sceneName];
+                this.currentScene = sceneName;
+                this.sceneContent.innerHTML = '';
 
-                this.isDragging = true;
-                this.activeCard = target;
-                this.activeCard.classList.add('dragging');
+                // Check if SVG exists, otherwise use placeholder
+                const img = document.createElement('img');
+                img.className = 'scene-image';
+                img.src = scene.image;
 
-                const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-                const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                // Fallback for missing SVGs
+                img.onerror = () => {
+                    const placeholder = document.createElement('div');
+                    placeholder.style.cssText = `
+                        width: 600px;
+                        height: 400px;
+                        background: linear-gradient(135deg, #1a1a1a 0%, #333 100%);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-size: 32px;
+                        border-radius: 20px;
+                        text-align: center;
+                        padding: 40px;
+                    `;
+                    placeholder.textContent = `Scene: ${sceneName.toUpperCase()}\n(Replace with ${scene.image})`;
+                    this.sceneContent.innerHTML = '';
+                    this.sceneContent.appendChild(placeholder);
+                };
 
-                this.startX = clientX;
-                this.startY = clientY;
-                this.currentX = 0;
-                this.currentY = 0;
-            }
+                this.sceneContent.appendChild(img);
 
-            onDragMove(e) {
-                if (!this.isDragging) return;
-                e.preventDefault();
+                // Add text animation for outside scene
+                if (scene.text) {
+                    setTimeout(() => this.animateText(scene.text), 1000);
+                }
 
-                const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-                const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                // Add red arrow if needed
+                if (scene.hasArrow) {
+                    const arrow = this.createArrow(scene);
+                    this.sceneContent.appendChild(arrow);
+                }
 
-                this.currentX = clientX - this.startX;
-                this.currentY = clientY - this.startY;
+                // Make scene clickable if needed
+                if (scene.clickable) {
+                    setTimeout(() => {
+                        this.vignette.classList.add('active');
+                        this.sceneContent.style.cursor = 'pointer';
+                        this.sceneContent.onclick = () => {
+                            this.transitionToScene(scene.nextScene, scene.transition);
+                        };
+                    }, 1000);
+                }
 
-                const rotation = this.currentX / 20;
-                const opacity = 1 - Math.abs(this.currentX) / 300;
-
-                this.activeCard.style.transform = `
-                    translateX(${this.currentX}px)
-                    translateY(${this.currentY}px)
-                    rotate(${rotation}deg)
-                `;
-                this.activeCard.style.opacity = opacity;
-            }
-
-            onDragEnd(e) {
-                if (!this.isDragging) return;
-
-                this.isDragging = false;
-                this.activeCard.classList.remove('dragging');
-
-                const draggedLeft = this.currentX < -this.threshold;
-                const draggedRight = this.currentX > this.threshold;
-
-                if (draggedLeft) {
-                    // Dismiss to the left - show next card
-                    this.dismissCard('left');
-                } else if (draggedRight) {
-                    // Dismiss to the right - go to previous card
-                    this.dismissCard('right');
-                } else {
-                    // Snap back
-                    this.snapBack();
+                // Add choice buttons if needed
+                if (scene.choices) {
+                    const buttons = this.createChoiceButtons(scene.choices);
+                    this.sceneContent.appendChild(buttons);
                 }
             }
 
-            snapBack() {
-                this.activeCard.style.transform = '';
-                this.activeCard.style.opacity = '1';
+            createArrow(scene) {
+                const arrow = document.createElement('div');
+                arrow.className = 'red-arrow';
+                Object.assign(arrow.style, scene.arrowPosition);
+
+                arrow.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.transitionToScene(scene.nextScene, scene.transition);
+                });
+
+                return arrow;
             }
 
-            dismissCard(direction) {
-                const translateX = direction === 'left' ? -1000 : 1000;
-                const rotation = direction === 'left' ? -30 : 30;
+            animateText(lines) {
+                const textContainer = document.createElement('div');
+                textContainer.className = 'scene-text typing';
 
-                this.activeCard.classList.add(`dismissed-${direction}`);
-                this.activeCard.style.transform = `translateX(${translateX}px) rotate(${rotation}deg)`;
-                this.activeCard.style.opacity = '0';
+                lines.forEach((line, index) => {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'text-line';
+                    lineDiv.textContent = line;
+                    lineDiv.style.animationDelay = `${index * 2}s`;
+                    textContainer.appendChild(lineDiv);
+                });
+
+                this.sceneContent.appendChild(textContainer);
+            }
+
+            createChoiceButtons(choices) {
+                const buttonContainer = document.createElement('div');
+                buttonContainer.className = 'choice-buttons';
+
+                choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = `choice-btn ${choice.class}`;
+                    btn.textContent = choice.text;
+                    btn.addEventListener('click', () => {
+                        const scene = scenes[choice.nextScene];
+                        this.transitionToScene(choice.nextScene, scene.transition);
+                    });
+                    buttonContainer.appendChild(btn);
+                });
+
+                return buttonContainer;
+            }
+
+            transitionToScene(nextScene, transitionType) {
+                switch(transitionType) {
+                    case 'pan-desaturate':
+                        this.panDesaturateTransition(nextScene);
+                        break;
+                    case 'flicker':
+                        this.flickerTransition(nextScene);
+                        break;
+                    case 'vignette':
+                        this.vignetteTransition(nextScene);
+                        break;
+                    case 'shake-flash':
+                        this.shakeFlashTransition(nextScene);
+                        break;
+                    case 'zoom-blackout':
+                        this.zoomBlackoutTransition(nextScene);
+                        break;
+                    default:
+                        this.renderScene(nextScene);
+                }
+            }
+
+            panDesaturateTransition(nextScene) {
+                const img = this.sceneContent.querySelector('.scene-image');
+                img.classList.add('desaturate');
+                img.style.transition = 'transform 1s ease, filter 1s ease';
+                img.style.transform = 'translateX(-100px)';
 
                 setTimeout(() => {
-                    if (direction === 'left') {
-                        // Move to next card
-                        this.history.push(this.currentIndex);
-                        this.currentIndex = (this.currentIndex + 1) % cardsData.length;
-                    } else {
-                        // Go to previous card
-                        if (this.history.length > 0) {
-                            this.currentIndex = this.history.pop();
-                        }
+                    this.renderScene(nextScene);
+                }, 1000);
+            }
+
+            flickerTransition(nextScene) {
+                this.sceneContainer.classList.add('flicker');
+
+                setTimeout(() => {
+                    this.sceneContainer.classList.remove('flicker');
+                    this.renderScene(nextScene);
+                }, 500);
+            }
+
+            vignetteTransition(nextScene) {
+                this.vignette.classList.add('active');
+
+                setTimeout(() => {
+                    this.vignette.classList.remove('active');
+                    this.renderScene(nextScene);
+                }, 1000);
+            }
+
+            shakeFlashTransition(nextScene) {
+                // Shake
+                this.sceneContainer.classList.add('shake');
+
+                setTimeout(() => {
+                    // Flash
+                    this.flash.classList.add('active');
+
+                    setTimeout(() => {
+                        this.flash.classList.remove('active');
+                        this.sceneContainer.classList.remove('shake');
+                        this.renderScene(nextScene);
+                    }, 300);
+                }, 500);
+            }
+
+            zoomBlackoutTransition(nextScene) {
+                const img = this.sceneContent.querySelector('.scene-image');
+
+                // Rapid zoom
+                img.classList.add('zoom-in');
+
+                // Face paint effect (simulated with opacity flashes)
+                let paintFlashes = 0;
+                const paintInterval = setInterval(() => {
+                    img.style.filter = paintFlashes % 2 === 0 ? 'hue-rotate(180deg)' : 'hue-rotate(0deg)';
+                    paintFlashes++;
+                    if (paintFlashes > 6) {
+                        clearInterval(paintInterval);
                     }
-                    this.renderCards();
-                }, 300);
+                }, 200);
+
+                // Black out
+                setTimeout(() => {
+                    this.blackScreen.classList.add('active');
+
+                    // Optional: reset after black screen
+                    setTimeout(() => {
+                        this.sceneContainer.classList.remove('active');
+                        this.blurBg.classList.remove('active');
+                        // Could show credits or restart here
+                    }, 3000);
+                }, 2500);
             }
         }
 
-        // Initialize the card stack
-        const cardStack = new CardStack(document.getElementById('cardStack'));
+        // Initialize the story engine
+        const storyEngine = new StoryEngine();
     </script>
 </body>
 </html>
