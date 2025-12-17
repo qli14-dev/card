@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦁 Chaos Zoo - The Wildest Adventure!</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="background-animation"></div>
+
+    <div class="game-container">
+        <!-- Start Screen -->
+        <div class="screen active" id="start-screen">
+            <div class="zoo-logo">
+                <h1>🦁 CHAOS ZOO 🦒</h1>
+                <p class="tagline">Where Animals Run the Show!</p>
+            </div>
+            <div class="start-content">
+                <p class="intro-text">Welcome to the most hilarious zoo in the world! The animals have taken over and they need YOUR help... or do they?</p>
+                <button class="btn btn-primary pulse" onclick="game.startGame()">Start Adventure</button>
+                <div class="fun-facts">
+                    <p>💡 Did you know? Our flamingos have PhDs in standing!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div class="screen" id="game-screen">
+            <div class="game-header">
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">🌟 Chaos Level:</span>
+                        <span class="stat-value" id="chaos-score">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">❤️ Animal Friends:</span>
+                        <span class="stat-value" id="friends-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">🎭 Fun Rating:</span>
+                        <span class="stat-value" id="fun-rating">0%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="scene-container">
+                <div class="animal-display" id="animal-display">
+                    <div class="animal-emoji" id="animal-emoji">🦁</div>
+                    <div class="animal-speech" id="animal-speech">
+                        <p id="animal-dialogue"></p>
+                    </div>
+                </div>
+
+                <div class="scene-description" id="scene-description">
+                    <p id="scene-text"></p>
+                </div>
+
+                <div class="choices-container" id="choices-container">
+                    <!-- Choices will be dynamically added here -->
+                </div>
+
+                <div class="inventory" id="inventory">
+                    <h3>🎒 Your Items:</h3>
+                    <div class="inventory-items" id="inventory-items">
+                        <span class="empty-inventory">Nothing yet...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- End Screen -->
+        <div class="screen" id="end-screen">
+            <div class="end-content">
+                <h2 id="end-title">Adventure Complete!</h2>
+                <div class="end-animal" id="end-animal">🎉</div>
+                <p id="end-message"></p>
+                <div class="final-stats">
+                    <div class="final-stat">
+                        <span class="final-label">Total Chaos:</span>
+                        <span class="final-value" id="final-chaos">0</span>
+                    </div>
+                    <div class="final-stat">
+                        <span class="final-label">Friends Made:</span>
+                        <span class="final-value" id="final-friends">0</span>
+                    </div>
+                    <div class="final-stat">
+                        <span class="final-label">Fun Had:</span>
+                        <span class="final-value" id="final-fun">0%</span>
+                    </div>
+                </div>
+                <div class="achievement" id="achievement"></div>
+                <button class="btn btn-primary" onclick="game.restartGame()">Play Again!</button>
+                <button class="btn btn-secondary" onclick="game.shareScore()">Share Score</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Particle Effects Container -->
+    <div class="particles" id="particles"></div>
+
+    <script src="game.js"></script>
+</body>
+</html>
