@@ -334,7 +334,13 @@
                 this.isMuted = false;
                 this.volume = 0.3; // 30% default
 
-                // Ambience nodes
+                // MP3 ambience
+                this.mp3Audio = null;
+                this.mp3Source = null;
+                this.mp3Gain = null;
+                this.useMp3 = false;
+
+                // Synthesized ambience nodes (fallback)
                 this.noiseNode = null;
                 this.noiseGain = null;
                 this.lowpassFilter = null;
@@ -396,11 +402,21 @@
                 return buffer;
             }
 
-            startAmbience() {
+            async startAmbience() {
                 if (!this.context) return;
 
                 this.stopAmbience(); // Clean up any existing ambience
 
+                // Try to load MP3 file first
+                try {
+                    await this.loadMp3Ambience();
+                    console.log('Using MP3 underwater ambience');
+                    return;
+                } catch (error) {
+                    console.log('MP3 not found, using synthesized ambience');
+                }
+
+                // Fallback to synthesized ambience
                 // Create noise source
                 const noiseBuffer = this.createNoiseBuffer();
                 this.noiseNode = this.context.createBufferSource();
@@ -438,6 +454,41 @@
 
                 // Add random bubble pops
                 this.startBubblePops();
+            }
+
+            async loadMp3Ambience() {
+                return new Promise((resolve, reject) => {
+                    // Create audio element
+                    this.mp3Audio = new Audio('海底水流涌动音效.mp3');
+                    this.mp3Audio.loop = true;
+                    this.mp3Audio.volume = this.isMuted ? 0 : this.volume;
+
+                    // Handle load success
+                    this.mp3Audio.addEventListener('canplaythrough', () => {
+                        // Create media source node
+                        this.mp3Source = this.context.createMediaElementSource(this.mp3Audio);
+                        this.mp3Gain = this.context.createGain();
+                        this.mp3Gain.gain.value = 0.6; // MP3 volume level
+
+                        // Connect to audio chain
+                        this.mp3Source.connect(this.mp3Gain);
+                        this.mp3Gain.connect(this.ambienceGain);
+
+                        // Play the audio
+                        this.mp3Audio.play().then(() => {
+                            this.useMp3 = true;
+                            resolve();
+                        }).catch(reject);
+                    }, { once: true });
+
+                    // Handle load error
+                    this.mp3Audio.addEventListener('error', (e) => {
+                        reject(new Error('MP3 file not found'));
+                    }, { once: true });
+
+                    // Start loading
+                    this.mp3Audio.load();
+                });
             }
 
             startBubblePops() {
@@ -478,6 +529,22 @@
             }
 
             stopAmbience() {
+                // Stop MP3 if playing
+                if (this.mp3Audio) {
+                    this.mp3Audio.pause();
+                    this.mp3Audio = null;
+                }
+                if (this.mp3Source) {
+                    this.mp3Source.disconnect();
+                    this.mp3Source = null;
+                }
+                if (this.mp3Gain) {
+                    this.mp3Gain.disconnect();
+                    this.mp3Gain = null;
+                }
+                this.useMp3 = false;
+
+                // Stop synthesized ambience
                 if (this.noiseNode) {
                     this.noiseNode.stop();
                     this.noiseNode.disconnect();
@@ -537,12 +604,20 @@
                 if (this.masterGain) {
                     this.masterGain.gain.value = this.isMuted ? 0 : value;
                 }
+                // Also update MP3 volume if using MP3
+                if (this.mp3Audio) {
+                    this.mp3Audio.volume = this.isMuted ? 0 : value;
+                }
             }
 
             toggleMute() {
                 this.isMuted = !this.isMuted;
                 if (this.masterGain) {
                     this.masterGain.gain.value = this.isMuted ? 0 : this.volume;
+                }
+                // Also mute/unmute MP3 if using MP3
+                if (this.mp3Audio) {
+                    this.mp3Audio.volume = this.isMuted ? 0 : this.volume;
                 }
                 return this.isMuted;
             }
