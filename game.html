@@ -2151,31 +2151,31 @@
                 const eyeX = bodyL * 0.35;
                 const eyeY = -bodyH * 0.15;
 
-                // Eye white
+                // Eye white (smaller)
                 ctx.beginPath();
-                ctx.ellipse(eyeX, eyeY, 6, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(eyeX, eyeY, 3.5, 3, 0, 0, Math.PI * 2);
                 ctx.fillStyle = 'white';
                 ctx.shadowBlur = 0;
                 ctx.fill();
 
-                // Iris
+                // Iris (smaller)
                 ctx.beginPath();
-                ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
-                const irisGrad = ctx.createRadialGradient(eyeX, eyeY, 0, eyeX, eyeY, 4);
+                ctx.arc(eyeX, eyeY, 2.5, 0, Math.PI * 2);
+                const irisGrad = ctx.createRadialGradient(eyeX, eyeY, 0, eyeX, eyeY, 2.5);
                 irisGrad.addColorStop(0, '#ffcc00');
                 irisGrad.addColorStop(1, '#cc6600');
                 ctx.fillStyle = irisGrad;
                 ctx.fill();
 
-                // Pupil
+                // Pupil (smaller)
                 ctx.beginPath();
-                ctx.arc(eyeX, eyeY, 2.5 * this.pupilSize, 0, Math.PI * 2);
+                ctx.arc(eyeX, eyeY, 1.5 * this.pupilSize, 0, Math.PI * 2);
                 ctx.fillStyle = 'black';
                 ctx.fill();
 
-                // Eye highlight
+                // Eye highlight (smaller)
                 ctx.beginPath();
-                ctx.arc(eyeX + 1.5, eyeY - 1.5, 1.5, 0, Math.PI * 2);
+                ctx.arc(eyeX + 1, eyeY - 1, 1, 0, Math.PI * 2);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
                 ctx.fill();
 
