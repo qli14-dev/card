@@ -83,6 +83,81 @@
             text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
         }
 
+        .audio-controls {
+            position: fixed;
+            top: 120px;
+            left: 20px;
+            padding: 15px 20px;
+            background: rgba(0, 30, 60, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            color: white;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .audio-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 10px 15px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .audio-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        .volume-control {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .volume-slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.2);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        .volume-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+            border: none;
+        }
+
+        .volume-value {
+            font-size: 12px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
         .difficulty-container {
             position: fixed;
             bottom: 20px;
@@ -191,6 +266,14 @@
         <div class="hud-value" id="score">0</div>
     </div>
 
+    <div class="audio-controls">
+        <button id="muteBtn" class="audio-btn">🔊</button>
+        <div class="volume-control">
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.3" class="volume-slider">
+            <span id="volumeValue" class="volume-value">30%</span>
+        </div>
+    </div>
+
     <div class="difficulty-container">
         <button class="difficulty-btn active" data-difficulty="beginner">Beginner</button>
         <button class="difficulty-btn" data-difficulty="intermediate">Intermediate</button>
@@ -238,6 +321,230 @@
                     this.lerp(u, this.grad(this.p[a], x, y), this.grad(this.p[b], x - 1, y)),
                     this.lerp(u, this.grad(this.p[a + 1], x, y - 1), this.grad(this.p[b + 1], x - 1, y - 1))
                 );
+            }
+        }
+
+        // Audio Manager - Web Audio API synthesis for underwater sounds
+        class AudioManager {
+            constructor() {
+                this.context = null;
+                this.masterGain = null;
+                this.ambienceGain = null;
+                this.sfxGain = null;
+                this.isMuted = false;
+                this.volume = 0.3; // 30% default
+
+                // Ambience nodes
+                this.noiseNode = null;
+                this.noiseGain = null;
+                this.lowpassFilter = null;
+                this.lfoGain = null;
+                this.lfo = null;
+                this.bubbleInterval = null;
+            }
+
+            async init() {
+                try {
+                    this.context = new (window.AudioContext || window.webkitAudioContext)();
+
+                    // Master gain control
+                    this.masterGain = this.context.createGain();
+                    this.masterGain.gain.value = this.volume;
+                    this.masterGain.connect(this.context.destination);
+
+                    // Ambience gain
+                    this.ambienceGain = this.context.createGain();
+                    this.ambienceGain.gain.value = 0.25; // 25% for ambience
+                    this.ambienceGain.connect(this.masterGain);
+
+                    // SFX gain
+                    this.sfxGain = this.context.createGain();
+                    this.sfxGain.gain.value = 0.5; // 50% for SFX
+                    this.sfxGain.connect(this.masterGain);
+
+                    console.log('AudioManager initialized');
+                } catch (error) {
+                    console.error('Audio initialization failed:', error);
+                }
+            }
+
+            async resume() {
+                if (this.context && this.context.state === 'suspended') {
+                    await this.context.resume();
+                }
+            }
+
+            createNoiseBuffer() {
+                const bufferSize = this.context.sampleRate * 2; // 2 seconds of noise
+                const buffer = this.context.createBuffer(1, bufferSize, this.context.sampleRate);
+                const data = buffer.getChannelData(0);
+
+                // Generate pink noise (more natural than white noise)
+                let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const white = Math.random() * 2 - 1;
+                    b0 = 0.99886 * b0 + white * 0.0555179;
+                    b1 = 0.99332 * b1 + white * 0.0750759;
+                    b2 = 0.96900 * b2 + white * 0.1538520;
+                    b3 = 0.86650 * b3 + white * 0.3104856;
+                    b4 = 0.55000 * b4 + white * 0.5329522;
+                    b5 = -0.7616 * b5 - white * 0.0168980;
+                    data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+                    b6 = white * 0.115926;
+                }
+
+                return buffer;
+            }
+
+            startAmbience() {
+                if (!this.context) return;
+
+                this.stopAmbience(); // Clean up any existing ambience
+
+                // Create noise source
+                const noiseBuffer = this.createNoiseBuffer();
+                this.noiseNode = this.context.createBufferSource();
+                this.noiseNode.buffer = noiseBuffer;
+                this.noiseNode.loop = true;
+
+                // Noise gain for mixing
+                this.noiseGain = this.context.createGain();
+                this.noiseGain.gain.value = 0.4;
+
+                // Lowpass filter for underwater muffled effect
+                this.lowpassFilter = this.context.createBiquadFilter();
+                this.lowpassFilter.type = 'lowpass';
+                this.lowpassFilter.frequency.value = 300; // Very low for deep underwater
+                this.lowpassFilter.Q.value = 1;
+
+                // LFO for subtle pressure variation
+                this.lfo = this.context.createOscillator();
+                this.lfo.frequency.value = 0.1; // 0.1 Hz - very slow
+                this.lfoGain = this.context.createGain();
+                this.lfoGain.gain.value = 50; // Modulation depth
+
+                // Connect LFO to filter frequency for subtle movement
+                this.lfo.connect(this.lfoGain);
+                this.lfoGain.connect(this.lowpassFilter.frequency);
+
+                // Connect audio chain
+                this.noiseNode.connect(this.noiseGain);
+                this.noiseGain.connect(this.lowpassFilter);
+                this.lowpassFilter.connect(this.ambienceGain);
+
+                // Start nodes
+                this.noiseNode.start(0);
+                this.lfo.start(0);
+
+                // Add random bubble pops
+                this.startBubblePops();
+            }
+
+            startBubblePops() {
+                // Random bubble sounds every 2-5 seconds
+                const scheduleBubble = () => {
+                    const delay = 2000 + Math.random() * 3000;
+                    this.bubbleInterval = setTimeout(() => {
+                        this.playBubblePop();
+                        scheduleBubble();
+                    }, delay);
+                };
+                scheduleBubble();
+            }
+
+            playBubblePop() {
+                if (!this.context) return;
+
+                const now = this.context.currentTime;
+
+                // Create oscillator for bubble sound
+                const osc = this.context.createOscillator();
+                const gain = this.context.createGain();
+
+                // Bubble pitch (high frequency, quick decay)
+                osc.frequency.setValueAtTime(800 + Math.random() * 400, now);
+                osc.frequency.exponentialRampToValueAtTime(200, now + 0.1);
+
+                // Bubble envelope (quick pop)
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.02, now + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+                osc.connect(gain);
+                gain.connect(this.ambienceGain);
+
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            stopAmbience() {
+                if (this.noiseNode) {
+                    this.noiseNode.stop();
+                    this.noiseNode.disconnect();
+                    this.noiseNode = null;
+                }
+                if (this.lfo) {
+                    this.lfo.stop();
+                    this.lfo.disconnect();
+                    this.lfo = null;
+                }
+                if (this.noiseGain) {
+                    this.noiseGain.disconnect();
+                    this.noiseGain = null;
+                }
+                if (this.lowpassFilter) {
+                    this.lowpassFilter.disconnect();
+                    this.lowpassFilter = null;
+                }
+                if (this.lfoGain) {
+                    this.lfoGain.disconnect();
+                    this.lfoGain = null;
+                }
+                if (this.bubbleInterval) {
+                    clearTimeout(this.bubbleInterval);
+                    this.bubbleInterval = null;
+                }
+            }
+
+            playCatchSfx() {
+                if (!this.context) return;
+
+                const now = this.context.currentTime;
+
+                // Create oscillator for catch sound
+                const osc = this.context.createOscillator();
+                const gain = this.context.createGain();
+
+                // Pleasant "ding/pop" sound
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, now); // A5 note
+                osc.frequency.exponentialRampToValueAtTime(440, now + 0.1); // Drop to A4
+
+                // Quick attack, medium decay
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.3, now + 0.01); // Quick attack
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); // Medium decay
+
+                osc.connect(gain);
+                gain.connect(this.sfxGain);
+
+                osc.start(now);
+                osc.stop(now + 0.15);
+            }
+
+            setMasterVolume(value) {
+                this.volume = value;
+                if (this.masterGain) {
+                    this.masterGain.gain.value = this.isMuted ? 0 : value;
+                }
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                if (this.masterGain) {
+                    this.masterGain.gain.value = this.isMuted ? 0 : this.volume;
+                }
+                return this.isMuted;
             }
         }
 
@@ -290,9 +597,14 @@
                 this.isFist = false;
                 this.wasFist = false;
 
+                // Audio
+                this.audioManager = new AudioManager();
+
                 this.setupDifficultyButtons();
+                this.setupAudioControls();
                 this.initEnvironment();
                 this.initFish();
+                this.initAudio();
                 this.initMediaPipe();
             }
 
@@ -309,6 +621,32 @@
                         this.difficulty = btn.dataset.difficulty;
                     });
                 });
+            }
+
+            setupAudioControls() {
+                const muteBtn = document.getElementById('muteBtn');
+                const volumeSlider = document.getElementById('volumeSlider');
+                const volumeValue = document.getElementById('volumeValue');
+
+                muteBtn.addEventListener('click', () => {
+                    const isMuted = this.audioManager.toggleMute();
+                    muteBtn.textContent = isMuted ? '🔇' : '🔊';
+                });
+
+                volumeSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    this.audioManager.setMasterVolume(value);
+                    volumeValue.textContent = Math.round(value * 100) + '%';
+                });
+
+                // Set initial volume display
+                volumeValue.textContent = '30%';
+            }
+
+            async initAudio() {
+                await this.audioManager.init();
+                await this.audioManager.resume();
+                this.audioManager.startAmbience();
             }
 
             initEnvironment() {
@@ -513,6 +851,8 @@
                             this.score++;
                             document.getElementById('score').textContent = this.score;
                             this.showScorePopup(fish.x, fish.y);
+                            // Play catch sound effect
+                            this.audioManager.playCatchSfx();
                         }
                     });
                 }
