@@ -696,10 +696,23 @@
                 // Audio
                 this.audioManager = new AudioManager();
 
+                // SVG Images
+                this.images = {
+                    fish: null,
+                    jellyfish1: null,
+                    jellyfish2: null
+                };
+                this.imagesLoaded = false;
+
                 this.setupDifficultyButtons();
                 this.setupAudioControls();
                 this.initEnvironment();
-                this.initFish();
+
+                // Load images before initializing fish
+                this.loadImages().then(() => {
+                    this.initFish();
+                });
+
                 this.initAudio();
                 this.initMediaPipe();
             }
@@ -793,6 +806,35 @@
                 });
             }
 
+            async loadImages() {
+                console.log('Loading SVG images...');
+                const loadImage = (src) => {
+                    return new Promise((resolve, reject) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            console.log(`Loaded: ${src}`);
+                            resolve(img);
+                        };
+                        img.onerror = () => {
+                            console.error(`Failed to load: ${src}`);
+                            reject(new Error(`Failed to load ${src}`));
+                        };
+                        img.src = src;
+                    });
+                };
+
+                try {
+                    this.images.fish = await loadImage('fish.svg');
+                    this.images.jellyfish1 = await loadImage('jellyfish1.svg');
+                    this.images.jellyfish2 = await loadImage('jellyfish2.svg');
+                    this.imagesLoaded = true;
+                    console.log('All SVG images loaded successfully');
+                } catch (error) {
+                    console.error('Error loading images:', error);
+                    this.imagesLoaded = false;
+                }
+            }
+
             initFish() {
                 // 25 fish (main creatures)
                 for (let i = 0; i < 25; i++) {
@@ -800,7 +842,8 @@
                         Math.random() * this.canvas.width,
                         Math.random() * this.canvas.height,
                         this.perlin,
-                        i
+                        i,
+                        this
                     ));
                 }
 
@@ -818,7 +861,8 @@
                     this.jellyfish.push(new Jellyfish(
                         Math.random() * this.canvas.width,
                         Math.random() * this.canvas.height,
-                        i
+                        i,
+                        this
                     ));
                 }
             }
@@ -1463,11 +1507,13 @@
 
         // Jellyfish Class - Slow vertical drift with pulsing
         class Jellyfish {
-            constructor(x, y, id) {
+            constructor(x, y, id, game) {
                 this.x = x;
                 this.y = y;
                 this.id = id;
+                this.game = game;
                 this.type = 'jellyfish';
+                this.jellyfishImageType = Math.random() < 0.5 ? 'jellyfish1' : 'jellyfish2';
 
                 // Movement
                 this.vx = (Math.random() - 0.5) * 0.5; // Slow horizontal drift
@@ -1552,64 +1598,62 @@
             draw(ctx) {
                 if (this.isCaught) return;
 
-                ctx.save();
-                ctx.translate(this.x, this.y);
-
-                // Pulsing effect
-                const pulse = Math.sin(this.pulsePhase) * 0.3 + 0.7;
-                const currentSize = this.size * pulse;
-
-                // Glow
-                ctx.shadowColor = `rgba(150, 100, 255, ${this.glowIntensity * pulse})`;
-                ctx.shadowBlur = 25;
-
-                // Bell (translucent)
-                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentSize);
-                gradient.addColorStop(0, 'rgba(180, 130, 255, 0.6)');
-                gradient.addColorStop(0.5, 'rgba(150, 100, 255, 0.4)');
-                gradient.addColorStop(1, 'rgba(120, 80, 200, 0.2)');
-
-                ctx.beginPath();
-                ctx.arc(0, 0, currentSize, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
-                ctx.fill();
-
-                // Inner detail
-                ctx.beginPath();
-                ctx.arc(0, 0, currentSize * 0.5, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(200, 150, 255, 0.3)';
-                ctx.fill();
-
-                // Tentacles
-                this.tentacles.forEach(t => {
+                // Use SVG image if loaded, otherwise use simple rendering
+                if (this.game && this.game.imagesLoaded && this.game.images[this.jellyfishImageType]) {
                     ctx.save();
-                    ctx.rotate(t.offset);
-                    ctx.strokeStyle = `rgba(150, 100, 255, ${0.4 * pulse})`;
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.moveTo(0, currentSize);
+                    ctx.translate(this.x, this.y);
 
-                    for (let i = 0; i <= 10; i++) {
-                        const y = currentSize + (i / 10) * t.length;
-                        const x = Math.sin(t.wave + i * 0.5) * 3;
-                        ctx.lineTo(x, y);
-                    }
+                    // Pulsing effect
+                    const pulse = Math.sin(this.pulsePhase) * 0.15 + 0.85;
 
-                    ctx.stroke();
+                    // Glow
+                    ctx.shadowColor = `rgba(150, 100, 255, ${this.glowIntensity * pulse})`;
+                    ctx.shadowBlur = 30;
+
+                    // Draw the SVG image with pulsing scale
+                    const imgWidth = this.size * 3 * pulse;
+                    const imgHeight = this.size * 3.5 * pulse;
+
+                    ctx.globalAlpha = 0.9;
+                    ctx.drawImage(
+                        this.game.images[this.jellyfishImageType],
+                        -imgWidth / 2,
+                        -imgHeight / 2,
+                        imgWidth,
+                        imgHeight
+                    );
+                    ctx.globalAlpha = 1;
+
                     ctx.restore();
-                });
+                } else {
+                    // Fallback to simple circle if image not loaded
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
 
-                ctx.restore();
+                    const pulse = Math.sin(this.pulsePhase) * 0.3 + 0.7;
+                    const currentSize = this.size * pulse;
+
+                    ctx.shadowColor = `rgba(150, 100, 255, ${this.glowIntensity * pulse})`;
+                    ctx.shadowBlur = 25;
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, currentSize, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(150, 100, 255, 0.5)';
+                    ctx.fill();
+
+                    ctx.restore();
+                }
             }
         }
 
         // Fish Class with State Machine
         class Fish {
-            constructor(x, y, perlin, id) {
+            constructor(x, y, perlin, id, game) {
                 this.x = x;
                 this.y = y;
                 this.perlin = perlin;
                 this.id = id;
+                this.game = game;
 
                 // Assign random fish type
                 this.type = FISH_TYPES[Math.floor(Math.random() * FISH_TYPES.length)];
@@ -1913,95 +1957,57 @@
             draw(ctx) {
                 if (this.isCaught) return;
 
-                ctx.save();
-                ctx.translate(this.x, this.y);
-                ctx.rotate(this.angle);
+                // Use SVG image if loaded, otherwise use simple rendering
+                if (this.game && this.game.imagesLoaded && this.game.images.fish) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle);
 
-                // Glow effect based on fish type
-                const glowColor = this.type.glowColor;
-                ctx.shadowColor = `rgba(${glowColor[0]}, ${glowColor[1]}, ${glowColor[2]}, ${this.glowIntensity})`;
-                ctx.shadowBlur = 20;
+                    // Glow effect based on fish type
+                    const glowColor = this.type.glowColor;
+                    ctx.shadowColor = `rgba(${glowColor[0]}, ${glowColor[1]}, ${glowColor[2]}, ${this.glowIntensity})`;
+                    ctx.shadowBlur = 20;
 
-                // Body gradient (head on RIGHT, tail on LEFT for correct orientation)
-                const gradient = ctx.createLinearGradient(-this.bodyLength / 2, 0, this.bodyLength / 2, 0);
-                gradient.addColorStop(0, this.type.colors[2]); // Tail color
-                gradient.addColorStop(0.5, this.type.colors[1]); // Mid color
-                gradient.addColorStop(1, this.type.colors[0]); // Head color
+                    // Apply color tint using composite operations
+                    ctx.globalCompositeOperation = 'source-over';
 
-                // Main body
-                ctx.beginPath();
-                ctx.ellipse(0, 0, this.bodyLength / 2, this.bodyHeight / 2, 0, 0, Math.PI * 2);
-                ctx.fillStyle = gradient;
-                ctx.fill();
+                    // Draw the SVG image
+                    const imgWidth = this.bodyLength * 1.5;
+                    const imgHeight = this.bodyHeight * 1.5;
+                    ctx.drawImage(
+                        this.game.images.fish,
+                        -imgWidth / 2,
+                        -imgHeight / 2,
+                        imgWidth,
+                        imgHeight
+                    );
 
-                // Dorsal fin
-                ctx.beginPath();
-                ctx.moveTo(-this.bodyLength / 4, -this.bodyHeight / 2);
-                ctx.quadraticCurveTo(
-                    -this.bodyLength / 4,
-                    -this.bodyHeight / 2 - 8,
-                    -this.bodyLength / 6,
-                    -this.bodyHeight / 2
-                );
-                ctx.fillStyle = this.type.colors[1];
-                ctx.fill();
+                    // Color tint overlay
+                    ctx.globalCompositeOperation = 'multiply';
+                    ctx.fillStyle = this.type.colors[0];
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillRect(-imgWidth / 2, -imgHeight / 2, imgWidth, imgHeight);
 
-                // Pectoral fin
-                ctx.beginPath();
-                ctx.moveTo(0, this.bodyHeight / 4);
-                ctx.quadraticCurveTo(
-                    5,
-                    this.bodyHeight / 2 + 5,
-                    10,
-                    this.bodyHeight / 4
-                );
-                ctx.fillStyle = this.type.colors[1];
-                ctx.globalAlpha = 0.7;
-                ctx.fill();
-                ctx.globalAlpha = 1;
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.globalAlpha = 1;
 
-                // Tail (on the LEFT side, swings during swimming)
-                const tailSwing = Math.sin(this.tailPhase) * 0.3;
-                ctx.beginPath();
-                ctx.moveTo(-this.bodyLength / 2, 0);
-                ctx.quadraticCurveTo(
-                    -this.bodyLength / 2 - 15,
-                    tailSwing * 15,
-                    -this.bodyLength / 2 - 25,
-                    tailSwing * 25
-                );
-                ctx.quadraticCurveTo(
-                    -this.bodyLength / 2 - 15,
-                    -tailSwing * 15,
-                    -this.bodyLength / 2,
-                    0
-                );
-                ctx.fillStyle = this.type.colors[2];
-                ctx.fill();
+                    ctx.restore();
+                } else {
+                    // Fallback to simple circle if image not loaded
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
 
-                // Eye (on the RIGHT side, head)
-                const eyeX = this.bodyLength / 3;
-                const eyeY = -this.bodyHeight / 4;
+                    const glowColor = this.type.glowColor;
+                    ctx.shadowColor = `rgba(${glowColor[0]}, ${glowColor[1]}, ${glowColor[2]}, ${this.glowIntensity})`;
+                    ctx.shadowBlur = 20;
 
-                // Eye white
-                ctx.beginPath();
-                ctx.arc(eyeX, eyeY, 5, 0, Math.PI * 2);
-                ctx.fillStyle = 'white';
-                ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.bodyLength / 2, 0, Math.PI * 2);
+                    ctx.fillStyle = this.type.colors[0];
+                    ctx.fill();
 
-                // Pupil (contracts when fleeing)
-                ctx.beginPath();
-                ctx.arc(eyeX, eyeY, 2.5 * this.pupilSize, 0, Math.PI * 2);
-                ctx.fillStyle = 'black';
-                ctx.fill();
-
-                // Eye highlight
-                ctx.beginPath();
-                ctx.arc(eyeX + 1, eyeY - 1, 1.5, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                ctx.fill();
-
-                ctx.restore();
+                    ctx.restore();
+                }
             }
         }
 
