@@ -584,6 +584,8 @@
 
                 this.perlin = new PerlinNoise();
                 this.fish = [];
+                this.shrimp = [];
+                this.jellyfish = [];
                 this.bubbles = [];
                 this.seaweed = [];
                 this.time = 0;
@@ -698,11 +700,30 @@
             }
 
             initFish() {
+                // 25 fish (main creatures)
                 for (let i = 0; i < 25; i++) {
                     this.fish.push(new Fish(
                         Math.random() * this.canvas.width,
                         Math.random() * this.canvas.height,
                         this.perlin,
+                        i
+                    ));
+                }
+
+                // 8 shrimp (quick burst movers)
+                for (let i = 0; i < 8; i++) {
+                    this.shrimp.push(new Shrimp(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
+                        i
+                    ));
+                }
+
+                // 5 jellyfish (slow drifters)
+                for (let i = 0; i < 5; i++) {
+                    this.jellyfish.push(new Jellyfish(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
                         i
                     ));
                 }
@@ -837,20 +858,22 @@
                 if (this.isFist && !this.wasFist && this.handPosition) {
                     const settings = DIFFICULTY_SETTINGS[this.difficulty];
 
-                    this.fish.forEach(fish => {
-                        const dx = fish.x - this.handPosition.x;
-                        const dy = fish.y - this.handPosition.y;
+                    // Reduced catch radius for more challenging gameplay
+                    const catchRadius = 100 + (this.handSpeed * 2);
+
+                    // Check all creatures
+                    const allCreatures = [...this.fish, ...this.shrimp, ...this.jellyfish];
+
+                    allCreatures.forEach(creature => {
+                        const dx = creature.x - this.handPosition.x;
+                        const dy = creature.y - this.handPosition.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
 
-                        // Increased catch radius significantly (was 80 + speed*2)
-                        // Now base 150 with larger speed bonus for easier catching
-                        const catchRadius = 150 + (this.handSpeed * 3);
-
-                        if (distance < catchRadius && !fish.isCaught) {
-                            fish.catch();
+                        if (distance < catchRadius && !creature.isCaught) {
+                            creature.catch();
                             this.score++;
                             document.getElementById('score').textContent = this.score;
-                            this.showScorePopup(fish.x, fish.y);
+                            this.showScorePopup(creature.x, creature.y);
                             // Play catch sound effect
                             this.audioManager.playCatchSfx();
                         }
@@ -902,6 +925,16 @@
                     fish.update(this.fish, this.handPosition, this.handSpeed, settings, this.canvas);
                 });
 
+                // Update shrimp (burst movement)
+                this.shrimp.forEach(shrimp => {
+                    shrimp.update(this.handPosition, this.handSpeed, this.canvas);
+                });
+
+                // Update jellyfish (vertical drift)
+                this.jellyfish.forEach(jellyfish => {
+                    jellyfish.update(this.handPosition, this.handSpeed, this.canvas);
+                });
+
                 // Check for catches
                 this.checkCatch();
             }
@@ -930,8 +963,14 @@
                 // Draw particles
                 this.drawParticles();
 
-                // Draw fish
+                // Draw jellyfish (background layer - slow drifters)
+                this.jellyfish.forEach(jellyfish => jellyfish.draw(this.ctx));
+
+                // Draw fish (middle layer - main creatures)
                 this.fish.forEach(fish => fish.draw(this.ctx));
+
+                // Draw shrimp (foreground layer - quick movers)
+                this.shrimp.forEach(shrimp => shrimp.draw(this.ctx));
 
                 // Draw hand indicator
                 if (this.handPosition) {
@@ -1084,8 +1123,8 @@
 
                 // Fist grab effect
                 if (this.isFist) {
-                    // Show catch radius when fist is detected
-                    const catchRadius = 150 + (this.handSpeed * 3);
+                    // Show catch radius when fist is detected (matches actual catch radius)
+                    const catchRadius = 100 + (this.handSpeed * 2);
 
                     // Draw catch area indicator
                     ctx.beginPath();
@@ -1173,6 +1212,302 @@
                 sizeMultiplier: 0.9
             }
         ];
+
+        // Shrimp Class - Quick burst movements
+        class Shrimp {
+            constructor(x, y, id) {
+                this.x = x;
+                this.y = y;
+                this.id = id;
+                this.type = 'shrimp';
+
+                // Movement
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = 0;
+
+                // Burst behavior
+                this.isMoving = false;
+                this.pauseDuration = 0.5 + Math.random() * 1.5; // 0.5-2s pause
+                this.moveDuration = 0.2 + Math.random() * 0.3; // 0.2-0.5s burst
+                this.actionTimer = 0;
+                this.burstSpeed = 6 + Math.random() * 4; // Fast bursts
+
+                // Visual
+                this.bodyLength = 15 + Math.random() * 10;
+                this.glowIntensity = 0.6 + Math.random() * 0.3;
+                this.pulsePhase = Math.random() * Math.PI * 2;
+
+                // Catch state
+                this.isCaught = false;
+                this.catchTime = 0;
+            }
+
+            update(handPos, handSpeed, canvas) {
+                if (this.isCaught) {
+                    this.catchTime += 0.016;
+                    if (this.catchTime > 2) this.respawn(canvas);
+                    return;
+                }
+
+                this.actionTimer += 0.016;
+                this.pulsePhase += 0.08;
+
+                // React to hand threat
+                if (handPos) {
+                    const dx = this.x - handPos.x;
+                    const dy = this.y - handPos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 150 && handSpeed > 10) {
+                        // Flee in quick bursts
+                        this.angle = Math.atan2(dy, dx);
+                        this.isMoving = true;
+                        this.actionTimer = 0;
+                    }
+                }
+
+                // Burst movement pattern
+                if (this.isMoving) {
+                    if (this.actionTimer < this.moveDuration) {
+                        this.speed = this.burstSpeed;
+                    } else {
+                        this.isMoving = false;
+                        this.speed = 0;
+                        this.actionTimer = 0;
+                        this.pauseDuration = 0.5 + Math.random() * 1.5;
+                    }
+                } else {
+                    if (this.actionTimer > this.pauseDuration) {
+                        this.isMoving = true;
+                        this.actionTimer = 0;
+                        this.angle = Math.random() * Math.PI * 2;
+                        this.moveDuration = 0.2 + Math.random() * 0.3;
+                    }
+                }
+
+                // Apply movement
+                this.vx = Math.cos(this.angle) * this.speed;
+                this.vy = Math.sin(this.angle) * this.speed;
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Boundaries
+                this.x = Math.max(20, Math.min(this.x, canvas.width - 20));
+                this.y = Math.max(20, Math.min(this.y, canvas.height - 20));
+            }
+
+            catch() {
+                this.isCaught = true;
+                this.catchTime = 0;
+            }
+
+            respawn(canvas) {
+                this.isCaught = false;
+                this.catchTime = 0;
+                const edge = Math.floor(Math.random() * 4);
+                switch (edge) {
+                    case 0: this.x = Math.random() * canvas.width; this.y = -30; break;
+                    case 1: this.x = canvas.width + 30; this.y = Math.random() * canvas.height; break;
+                    case 2: this.x = Math.random() * canvas.width; this.y = canvas.height + 30; break;
+                    case 3: this.x = -30; this.y = Math.random() * canvas.height; break;
+                }
+            }
+
+            draw(ctx) {
+                if (this.isCaught) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Pulsing glow
+                const pulse = Math.sin(this.pulsePhase) * 0.2 + 0.8;
+                ctx.shadowColor = `rgba(255, 150, 100, ${this.glowIntensity * pulse})`;
+                ctx.shadowBlur = 15;
+
+                // Body (pink-orange)
+                const gradient = ctx.createLinearGradient(-this.bodyLength/2, 0, this.bodyLength/2, 0);
+                gradient.addColorStop(0, '#ff9a76');
+                gradient.addColorStop(0.5, '#ff7e5f');
+                gradient.addColorStop(1, '#feb47b');
+
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.bodyLength/2, this.bodyLength/4, 0, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Tail segments
+                for (let i = 0; i < 3; i++) {
+                    const offset = this.bodyLength/2 + i * 4;
+                    ctx.beginPath();
+                    ctx.arc(offset, 0, 3 - i, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 126, 95, ${0.8 - i * 0.2})`;
+                    ctx.fill();
+                }
+
+                // Antennae
+                ctx.strokeStyle = 'rgba(255, 200, 150, 0.6)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-this.bodyLength/2, 0);
+                ctx.lineTo(-this.bodyLength/2 - 8, -5);
+                ctx.moveTo(-this.bodyLength/2, 0);
+                ctx.lineTo(-this.bodyLength/2 - 8, 5);
+                ctx.stroke();
+
+                // Eye
+                ctx.beginPath();
+                ctx.arc(-this.bodyLength/3, 0, 2, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // Jellyfish Class - Slow vertical drift with pulsing
+        class Jellyfish {
+            constructor(x, y, id) {
+                this.x = x;
+                this.y = y;
+                this.id = id;
+                this.type = 'jellyfish';
+
+                // Movement
+                this.vx = (Math.random() - 0.5) * 0.5; // Slow horizontal drift
+                this.vy = -0.5 - Math.random() * 0.5; // Slow upward movement
+                this.angle = 0;
+
+                // Pulsing
+                this.pulsePhase = Math.random() * Math.PI * 2;
+                this.pulseSpeed = 0.03 + Math.random() * 0.02;
+                this.size = 20 + Math.random() * 15;
+
+                // Visual
+                this.glowIntensity = 0.7 + Math.random() * 0.3;
+                this.tentacles = [];
+                for (let i = 0; i < 6; i++) {
+                    this.tentacles.push({
+                        offset: (i / 6) * Math.PI * 2,
+                        length: this.size * (1.5 + Math.random() * 0.5),
+                        wave: Math.random() * Math.PI * 2
+                    });
+                }
+
+                // Catch state
+                this.isCaught = false;
+                this.catchTime = 0;
+            }
+
+            update(handPos, handSpeed, canvas) {
+                if (this.isCaught) {
+                    this.catchTime += 0.016;
+                    if (this.catchTime > 2) this.respawn(canvas);
+                    return;
+                }
+
+                this.pulsePhase += this.pulseSpeed;
+
+                // React to hand (gentle avoidance)
+                if (handPos) {
+                    const dx = this.x - handPos.x;
+                    const dy = this.y - handPos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 200) {
+                        const avoidForce = (200 - distance) / 200 * 0.02;
+                        this.vx += (dx / distance) * avoidForce;
+                        this.vy += (dy / distance) * avoidForce;
+                    }
+                }
+
+                // Apply movement
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Wrap around screen
+                if (this.y < -50) this.y = canvas.height + 50;
+                if (this.x < -50) this.x = canvas.width + 50;
+                if (this.x > canvas.width + 50) this.x = -50;
+
+                // Damping
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+
+                // Maintain upward drift
+                if (this.vy > -0.3) this.vy -= 0.01;
+
+                // Update tentacle waves
+                this.tentacles.forEach(t => t.wave += 0.05);
+            }
+
+            catch() {
+                this.isCaught = true;
+                this.catchTime = 0;
+            }
+
+            respawn(canvas) {
+                this.isCaught = false;
+                this.catchTime = 0;
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + 50;
+            }
+
+            draw(ctx) {
+                if (this.isCaught) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                // Pulsing effect
+                const pulse = Math.sin(this.pulsePhase) * 0.3 + 0.7;
+                const currentSize = this.size * pulse;
+
+                // Glow
+                ctx.shadowColor = `rgba(150, 100, 255, ${this.glowIntensity * pulse})`;
+                ctx.shadowBlur = 25;
+
+                // Bell (translucent)
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, currentSize);
+                gradient.addColorStop(0, 'rgba(180, 130, 255, 0.6)');
+                gradient.addColorStop(0.5, 'rgba(150, 100, 255, 0.4)');
+                gradient.addColorStop(1, 'rgba(120, 80, 200, 0.2)');
+
+                ctx.beginPath();
+                ctx.arc(0, 0, currentSize, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Inner detail
+                ctx.beginPath();
+                ctx.arc(0, 0, currentSize * 0.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(200, 150, 255, 0.3)';
+                ctx.fill();
+
+                // Tentacles
+                this.tentacles.forEach(t => {
+                    ctx.save();
+                    ctx.rotate(t.offset);
+                    ctx.strokeStyle = `rgba(150, 100, 255, ${0.4 * pulse})`;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(0, currentSize);
+
+                    for (let i = 0; i <= 10; i++) {
+                        const y = currentSize + (i / 10) * t.length;
+                        const x = Math.sin(t.wave + i * 0.5) * 3;
+                        ctx.lineTo(x, y);
+                    }
+
+                    ctx.stroke();
+                    ctx.restore();
+                });
+
+                ctx.restore();
+            }
+        }
 
         // Fish Class with State Machine
         class Fish {
