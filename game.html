@@ -858,8 +858,8 @@
                 if (this.isFist && !this.wasFist && this.handPosition) {
                     const settings = DIFFICULTY_SETTINGS[this.difficulty];
 
-                    // Reduced catch radius for more challenging gameplay
-                    const catchRadius = 100 + (this.handSpeed * 2);
+                    // Further reduced catch radius for maximum challenge
+                    const catchRadius = 80 + (this.handSpeed * 1.5);
 
                     // Check all creatures
                     const allCreatures = [...this.fish, ...this.shrimp, ...this.jellyfish];
@@ -1124,7 +1124,7 @@
                 // Fist grab effect
                 if (this.isFist) {
                     // Show catch radius when fist is detected (matches actual catch radius)
-                    const catchRadius = 100 + (this.handSpeed * 2);
+                    const catchRadius = 80 + (this.handSpeed * 1.5);
 
                     // Draw catch area indicator
                     ctx.beginPath();
