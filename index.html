@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card Drag Animation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .card-container {
+            position: relative;
+            width: 400px;
+            height: 600px;
+            perspective: 1000px;
+        }
+
+        .card {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 24px;
+            overflow: hidden;
+            cursor: grab;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                        opacity 0.3s ease,
+                        box-shadow 0.3s ease;
+            will-change: transform;
+            user-select: none;
+        }
+
+        .card:active {
+            cursor: grabbing;
+        }
+
+        .card.dragging {
+            transition: none;
+        }
+
+        .card.dismissing {
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55),
+                        opacity 0.5s ease;
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            padding: 32px;
+            color: white;
+        }
+
+        .card-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
+            z-index: 0;
+        }
+
+        .card-content {
+            position: relative;
+            z-index: 1;
+            margin-top: auto;
+        }
+
+        .card-title {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 12px rgba(0,0,0,0.3);
+        }
+
+        .card-description {
+            font-size: 16px;
+            line-height: 1.5;
+            opacity: 0.95;
+            text-shadow: 0 1px 8px rgba(0,0,0,0.3);
+        }
+
+        /* Card-specific glow colors */
+        .card[data-index="0"] {
+            box-shadow: 0 20px 60px rgba(59, 130, 246, 0.6),
+                        0 0 80px rgba(59, 130, 246, 0.4),
+                        0 0 120px rgba(59, 130, 246, 0.2);
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .card[data-index="1"] {
+            box-shadow: 0 20px 60px rgba(236, 72, 153, 0.6),
+                        0 0 80px rgba(236, 72, 153, 0.4),
+                        0 0 120px rgba(236, 72, 153, 0.2);
+            background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+        }
+
+        .card[data-index="2"] {
+            box-shadow: 0 20px 60px rgba(168, 85, 247, 0.6),
+                        0 0 80px rgba(168, 85, 247, 0.4),
+                        0 0 120px rgba(168, 85, 247, 0.2);
+            background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+        }
+
+        .card[data-index="3"] {
+            box-shadow: 0 20px 60px rgba(34, 197, 94, 0.6),
+                        0 0 80px rgba(34, 197, 94, 0.4),
+                        0 0 120px rgba(34, 197, 94, 0.2);
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        /* Stack effect for cards behind */
+        .card:nth-child(2) {
+            transform: scale(0.95) translateY(10px);
+            opacity: 0.8;
+            z-index: -1;
+        }
+
+        .card:nth-child(3) {
+            transform: scale(0.9) translateY(20px);
+            opacity: 0.6;
+            z-index: -2;
+        }
+
+        .card:nth-child(n+4) {
+            transform: scale(0.85) translateY(30px);
+            opacity: 0;
+            z-index: -3;
+        }
+
+        /* Navigation hints */
+        .swipe-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 48px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .swipe-left {
+            left: 20px;
+            color: rgba(239, 68, 68, 0.8);
+        }
+
+        .swipe-right {
+            right: 20px;
+            color: rgba(34, 197, 94, 0.8);
+        }
+
+        .card.show-left-indicator .swipe-left,
+        .card.show-right-indicator .swipe-right {
+            opacity: 1;
+        }
+
+        /* Instructions */
+        .instructions {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        @media (max-width: 480px) {
+            .card-container {
+                width: 90vw;
+                height: 70vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="card-container" id="cardContainer">
+        <div class="swipe-indicator swipe-left">✕</div>
+        <div class="swipe-indicator swipe-right">←</div>
+    </div>
+
+    <div class="instructions">
+        ← Swipe left to dismiss | Swipe right to go back →
+    </div>
+
+    <script>
+        const cardData = [
+            {
+                image: 'sea.svg',
+                title: 'Ocean Depths',
+                description: 'Explore the mysterious underwater world',
+                color: 'blue'
+            },
+            {
+                image: 'seaflowers.svg',
+                title: 'Sea Flowers',
+                description: 'Discover vibrant marine flora',
+                color: 'pink'
+            },
+            {
+                image: 'dishing.svg',
+                title: 'Culinary Art',
+                description: 'A journey through creative cuisine',
+                color: 'purple'
+            },
+            {
+                image: 'classroom.svg',
+                title: 'Learning Space',
+                description: 'Where knowledge comes to life',
+                color: 'green'
+            }
+        ];
+
+        class CardStack {
+            constructor(container, data) {
+                this.container = container;
+                this.data = data;
+                this.currentIndex = 0;
+                this.history = [];
+                this.cards = [];
+                this.isDragging = false;
+                this.startX = 0;
+                this.startY = 0;
+                this.currentX = 0;
+                this.currentY = 0;
+                this.threshold = 100; // pixels to drag before dismissing
+
+                this.init();
+            }
+
+            init() {
+                this.renderCards();
+                this.attachEvents();
+            }
+
+            renderCards() {
+                // Clear existing cards
+                const existingCards = this.container.querySelectorAll('.card');
+                existingCards.forEach(card => card.remove());
+                this.cards = [];
+
+                // Render next 4 cards
+                for (let i = 0; i < 4; i++) {
+                    const dataIndex = (this.currentIndex + i) % this.data.length;
+                    const card = this.createCard(this.data[dataIndex], dataIndex);
+                    this.container.appendChild(card);
+                    this.cards.push(card);
+                }
+            }
+
+            createCard(data, index) {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.setAttribute('data-index', index);
+
+                card.innerHTML = `
+                    <div class="card-inner">
+                        <img src="${data.image}" alt="${data.title}" class="card-image">
+                        <div class="card-overlay"></div>
+                        <div class="card-content">
+                            <h2 class="card-title">${data.title}</h2>
+                            <p class="card-description">${data.description}</p>
+                        </div>
+                    </div>
+                `;
+
+                return card;
+            }
+
+            attachEvents() {
+                this.container.addEventListener('mousedown', this.handleDragStart.bind(this));
+                this.container.addEventListener('mousemove', this.handleDrag.bind(this));
+                this.container.addEventListener('mouseup', this.handleDragEnd.bind(this));
+                this.container.addEventListener('mouseleave', this.handleDragEnd.bind(this));
+
+                // Touch events
+                this.container.addEventListener('touchstart', this.handleDragStart.bind(this));
+                this.container.addEventListener('touchmove', this.handleDrag.bind(this));
+                this.container.addEventListener('touchend', this.handleDragEnd.bind(this));
+            }
+
+            handleDragStart(e) {
+                const topCard = this.cards[0];
+                if (!topCard) return;
+
+                this.isDragging = true;
+                topCard.classList.add('dragging');
+
+                const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+
+                this.startX = clientX;
+                this.startY = clientY;
+                this.currentX = 0;
+                this.currentY = 0;
+            }
+
+            handleDrag(e) {
+                if (!this.isDragging) return;
+
+                e.preventDefault();
+                const topCard = this.cards[0];
+
+                const clientX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
+                const clientY = e.type.includes('mouse') ? e.clientY : e.touches[0].clientY;
+
+                this.currentX = clientX - this.startX;
+                this.currentY = clientY - this.startY;
+
+                const rotation = this.currentX / 20;
+                const opacity = Math.max(0.5, 1 - Math.abs(this.currentX) / 300);
+
+                topCard.style.transform = `translate(${this.currentX}px, ${this.currentY}px) rotate(${rotation}deg)`;
+                topCard.style.opacity = opacity;
+
+                // Show indicators
+                if (this.currentX < -this.threshold / 2) {
+                    topCard.classList.add('show-left-indicator');
+                    topCard.classList.remove('show-right-indicator');
+                } else if (this.currentX > this.threshold / 2 && this.history.length > 0) {
+                    topCard.classList.add('show-right-indicator');
+                    topCard.classList.remove('show-left-indicator');
+                } else {
+                    topCard.classList.remove('show-left-indicator', 'show-right-indicator');
+                }
+            }
+
+            handleDragEnd(e) {
+                if (!this.isDragging) return;
+
+                this.isDragging = false;
+                const topCard = this.cards[0];
+                topCard.classList.remove('dragging', 'show-left-indicator', 'show-right-indicator');
+
+                // Swipe left to dismiss
+                if (this.currentX < -this.threshold) {
+                    this.dismissCard('left');
+                }
+                // Swipe right to go back
+                else if (this.currentX > this.threshold && this.history.length > 0) {
+                    this.goBack();
+                }
+                // Snap back
+                else {
+                    topCard.style.transform = '';
+                    topCard.style.opacity = '';
+                }
+            }
+
+            dismissCard(direction) {
+                const topCard = this.cards[0];
+                topCard.classList.add('dismissing');
+
+                const moveX = direction === 'left' ? -window.innerWidth : window.innerWidth;
+                const rotation = direction === 'left' ? -30 : 30;
+
+                topCard.style.transform = `translate(${moveX}px, ${this.currentY}px) rotate(${rotation}deg)`;
+                topCard.style.opacity = '0';
+
+                // Save to history
+                this.history.push(this.currentIndex);
+
+                // Move to next card
+                setTimeout(() => {
+                    this.currentIndex = (this.currentIndex + 1) % this.data.length;
+                    this.renderCards();
+                }, 500);
+            }
+
+            goBack() {
+                const topCard = this.cards[0];
+                topCard.classList.add('dismissing');
+
+                topCard.style.transform = `translate(${window.innerWidth}px, ${this.currentY}px) rotate(30deg)`;
+                topCard.style.opacity = '0';
+
+                // Restore from history
+                setTimeout(() => {
+                    this.currentIndex = this.history.pop();
+                    this.renderCards();
+                }, 500);
+            }
+        }
+
+        // Initialize the card stack
+        const container = document.getElementById('cardContainer');
+        new CardStack(container, cardData);
+    </script>
+</body>
+</html>
