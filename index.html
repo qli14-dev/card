@@ -113,6 +113,20 @@
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         }
 
+        .card[data-title="Ocean Depths"] {
+            cursor: pointer;
+        }
+
+        .card[data-title="Ocean Depths"] .card-description::after {
+            content: " 🎮 Click to play!";
+            display: block;
+            margin-top: 12px;
+            font-size: 14px;
+            color: #ffd700;
+            font-weight: 600;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
         .card[data-index="1"] {
             box-shadow: 0 20px 60px rgba(236, 72, 153, 0.6),
                         0 0 80px rgba(236, 72, 153, 0.4),
@@ -280,6 +294,7 @@
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.setAttribute('data-index', index);
+                card.setAttribute('data-title', data.title);
 
                 card.innerHTML = `
                     <div class="card-inner">
@@ -359,6 +374,13 @@
                 this.isDragging = false;
                 const topCard = this.cards[0];
                 topCard.classList.remove('dragging', 'show-left-indicator', 'show-right-indicator');
+
+                // Check if this was a click (minimal drag) on Ocean Depths card
+                const dragDistance = Math.sqrt(this.currentX * this.currentX + this.currentY * this.currentY);
+                if (dragDistance < 10 && topCard.getAttribute('data-title') === 'Ocean Depths') {
+                    window.location.href = 'game.html';
+                    return;
+                }
 
                 // Swipe left to dismiss
                 if (this.currentX < -this.threshold) {

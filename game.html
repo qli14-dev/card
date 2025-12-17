@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hand-Tracking Fish Catching Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(180deg, #001a33 0%, #003d66 50%, #004d73 100%);
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #videoContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 240px;
+            height: 180px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            z-index: 100;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #cameraCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            transform: scaleX(-1);
+        }
+
+        .hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 20px 30px;
+            background: rgba(0, 30, 60, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            color: white;
+            z-index: 100;
+        }
+
+        .hud-title {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+        }
+
+        .hud-value {
+            font-size: 48px;
+            font-weight: 700;
+            color: #00d4ff;
+            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .difficulty-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .difficulty-btn {
+            padding: 12px 24px;
+            background: rgba(0, 30, 60, 0.6);
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .difficulty-btn:hover {
+            background: rgba(0, 50, 100, 0.8);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.3);
+        }
+
+        .difficulty-btn.active {
+            background: rgba(0, 212, 255, 0.3);
+            border-color: #00d4ff;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+        }
+
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            z-index: 200;
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            opacity: 0.8;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .score-popup {
+            position: fixed;
+            font-size: 36px;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            pointer-events: none;
+            z-index: 150;
+            animation: scoreFloat 1s ease-out forwards;
+        }
+
+        @keyframes scoreFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-80px) scale(1.5);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Initializing camera...</div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="videoContainer">
+        <video id="videoElement" autoplay playsinline></video>
+        <canvas id="cameraCanvas"></canvas>
+    </div>
+
+    <div class="hud">
+        <div class="hud-title">Fish Caught</div>
+        <div class="hud-value" id="score">0</div>
+    </div>
+
+    <div class="difficulty-container">
+        <button class="difficulty-btn active" data-difficulty="beginner">Beginner</button>
+        <button class="difficulty-btn" data-difficulty="intermediate">Intermediate</button>
+        <button class="difficulty-btn" data-difficulty="advanced">Advanced</button>
+    </div>
+
+    <script>
+        // Perlin Noise Implementation
+        class PerlinNoise {
+            constructor() {
+                this.permutation = [];
+                for (let i = 0; i < 256; i++) this.permutation[i] = i;
+                for (let i = 255; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [this.permutation[i], this.permutation[j]] = [this.permutation[j], this.permutation[i]];
+                }
+                this.p = [...this.permutation, ...this.permutation];
+            }
+
+            fade(t) {
+                return t * t * t * (t * (t * 6 - 15) + 10);
+            }
+
+            lerp(t, a, b) {
+                return a + t * (b - a);
+            }
+
+            grad(hash, x, y) {
+                const h = hash & 15;
+                const u = h < 8 ? x : y;
+                const v = h < 4 ? y : h === 12 || h === 14 ? x : 0;
+                return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+            }
+
+            noise(x, y) {
+                const X = Math.floor(x) & 255;
+                const Y = Math.floor(y) & 255;
+                x -= Math.floor(x);
+                y -= Math.floor(y);
+                const u = this.fade(x);
+                const v = this.fade(y);
+                const a = this.p[X] + Y;
+                const b = this.p[X + 1] + Y;
+                return this.lerp(v,
+                    this.lerp(u, this.grad(this.p[a], x, y), this.grad(this.p[b], x - 1, y)),
+                    this.lerp(u, this.grad(this.p[a + 1], x, y - 1), this.grad(this.p[b + 1], x - 1, y - 1))
+                );
+            }
+        }
+
+        // Difficulty Settings
+        const DIFFICULTY_SETTINGS = {
+            beginner: {
+                sensitivity: 0.4,
+                escapeSpeed: 5,
+                alertRadius: 200,
+                slowSpeedThreshold: 14
+            },
+            intermediate: {
+                sensitivity: 0.7,
+                escapeSpeed: 8,
+                alertRadius: 280,
+                slowSpeedThreshold: 12.5
+            },
+            advanced: {
+                sensitivity: 1.2,
+                escapeSpeed: 12,
+                alertRadius: 380,
+                slowSpeedThreshold: 11
+            }
+        };
+
+        // Game State
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.videoElement = document.getElementById('videoElement');
+                this.cameraCanvas = document.getElementById('cameraCanvas');
+                this.cameraCtx = this.cameraCanvas.getContext('2d');
+
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+
+                this.perlin = new PerlinNoise();
+                this.fish = [];
+                this.bubbles = [];
+                this.seaweed = [];
+                this.time = 0;
+                this.score = 0;
+                this.difficulty = 'beginner';
+
+                // Hand tracking
+                this.handPosition = null;
+                this.previousHandPosition = null;
+                this.handSpeed = 0;
+                this.isFist = false;
+                this.wasFist = false;
+
+                this.setupDifficultyButtons();
+                this.initEnvironment();
+                this.initFish();
+                this.initMediaPipe();
+            }
+
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+
+            setupDifficultyButtons() {
+                document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.difficulty = btn.dataset.difficulty;
+                    });
+                });
+            }
+
+            initEnvironment() {
+                // Create seaweed
+                for (let i = 0; i < 15; i++) {
+                    this.seaweed.push({
+                        x: Math.random() * this.canvas.width,
+                        height: 80 + Math.random() * 120,
+                        segments: 8,
+                        phase: Math.random() * Math.PI * 2,
+                        speed: 0.5 + Math.random() * 0.5
+                    });
+                }
+
+                // Create bubbles
+                for (let i = 0; i < 30; i++) {
+                    this.addBubble();
+                }
+            }
+
+            addBubble() {
+                this.bubbles.push({
+                    x: Math.random() * this.canvas.width,
+                    y: this.canvas.height + Math.random() * 100,
+                    radius: 2 + Math.random() * 4,
+                    speed: 0.5 + Math.random() * 1.5,
+                    wobble: Math.random() * Math.PI * 2
+                });
+            }
+
+            initFish() {
+                for (let i = 0; i < 25; i++) {
+                    this.fish.push(new Fish(
+                        Math.random() * this.canvas.width,
+                        Math.random() * this.canvas.height,
+                        this.perlin,
+                        i
+                    ));
+                }
+            }
+
+            async initMediaPipe() {
+                const hands = new Hands({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+                });
+
+                hands.setOptions({
+                    maxNumHands: 1,
+                    modelComplexity: 1,
+                    minDetectionConfidence: 0.7,
+                    minTrackingConfidence: 0.7
+                });
+
+                hands.onResults((results) => this.onHandsResults(results));
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    this.videoElement.srcObject = stream;
+
+                    const camera = new Camera(this.videoElement, {
+                        onFrame: async () => {
+                            await hands.send({ image: this.videoElement });
+                        },
+                        width: 640,
+                        height: 480
+                    });
+                    camera.start();
+
+                    document.getElementById('loading').style.display = 'none';
+                    this.animate();
+                } catch (error) {
+                    console.error('Camera error:', error);
+                    document.getElementById('loading').innerHTML = '<div class="loading-text">Camera access denied. Please enable camera.</div>';
+                }
+            }
+
+            onHandsResults(results) {
+                // Draw hand skeleton on camera canvas
+                this.cameraCanvas.width = this.videoElement.videoWidth;
+                this.cameraCanvas.height = this.videoElement.videoHeight;
+                this.cameraCtx.clearRect(0, 0, this.cameraCanvas.width, this.cameraCanvas.height);
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    const landmarks = results.multiHandLandmarks[0];
+
+                    // Draw hand skeleton
+                    this.drawHandSkeleton(landmarks);
+
+                    // Get palm center (landmark 9 is palm base)
+                    const palm = landmarks[9];
+                    const newHandPosition = {
+                        x: (1 - palm.x) * this.canvas.width, // Mirror x
+                        y: palm.y * this.canvas.height
+                    };
+
+                    // Calculate hand speed
+                    if (this.previousHandPosition) {
+                        const dx = newHandPosition.x - this.previousHandPosition.x;
+                        const dy = newHandPosition.y - this.previousHandPosition.y;
+                        this.handSpeed = Math.sqrt(dx * dx + dy * dy);
+                    }
+
+                    this.previousHandPosition = this.handPosition;
+                    this.handPosition = newHandPosition;
+
+                    // Detect fist gesture
+                    this.wasFist = this.isFist;
+                    this.isFist = this.detectFist(landmarks);
+                } else {
+                    this.handPosition = null;
+                    this.previousHandPosition = null;
+                    this.handSpeed = 0;
+                    this.wasFist = this.isFist;
+                    this.isFist = false;
+                }
+            }
+
+            drawHandSkeleton(landmarks) {
+                const ctx = this.cameraCtx;
+                const connections = [
+                    [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
+                    [0, 5], [5, 6], [6, 7], [7, 8], // Index
+                    [0, 9], [9, 10], [10, 11], [11, 12], // Middle
+                    [0, 13], [13, 14], [14, 15], [15, 16], // Ring
+                    [0, 17], [17, 18], [18, 19], [19, 20], // Pinky
+                    [5, 9], [9, 13], [13, 17] // Palm
+                ];
+
+                // Draw connections
+                ctx.strokeStyle = 'rgba(0, 255, 200, 0.6)';
+                ctx.lineWidth = 2;
+                connections.forEach(([start, end]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(landmarks[start].x * this.cameraCanvas.width, landmarks[start].y * this.cameraCanvas.height);
+                    ctx.lineTo(landmarks[end].x * this.cameraCanvas.width, landmarks[end].y * this.cameraCanvas.height);
+                    ctx.stroke();
+                });
+
+                // Draw landmarks
+                landmarks.forEach(landmark => {
+                    ctx.beginPath();
+                    ctx.arc(landmark.x * this.cameraCanvas.width, landmark.y * this.cameraCanvas.height, 3, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(0, 255, 200, 0.8)';
+                    ctx.fill();
+                });
+            }
+
+            detectFist(landmarks) {
+                // Check if all fingertips are close to palm
+                const palm = landmarks[0];
+                const fingertips = [4, 8, 12, 16, 20];
+                let closedCount = 0;
+
+                fingertips.forEach(tip => {
+                    const dx = landmarks[tip].x - palm.x;
+                    const dy = landmarks[tip].y - palm.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < 0.15) closedCount++;
+                });
+
+                return closedCount >= 4;
+            }
+
+            checkCatch() {
+                // Only catch on fist transition (open -> fist)
+                if (this.isFist && !this.wasFist && this.handPosition) {
+                    const settings = DIFFICULTY_SETTINGS[this.difficulty];
+
+                    this.fish.forEach(fish => {
+                        const dx = fish.x - this.handPosition.x;
+                        const dy = fish.y - this.handPosition.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        // Catch radius based on hand speed
+                        const catchRadius = 80 + (this.handSpeed * 2);
+
+                        if (distance < catchRadius && !fish.isCaught) {
+                            fish.catch();
+                            this.score++;
+                            document.getElementById('score').textContent = this.score;
+                            this.showScorePopup(fish.x, fish.y);
+                        }
+                    });
+                }
+            }
+
+            showScorePopup(x, y) {
+                const popup = document.createElement('div');
+                popup.className = 'score-popup';
+                popup.textContent = '+1';
+                popup.style.left = x + 'px';
+                popup.style.top = y + 'px';
+                document.body.appendChild(popup);
+                setTimeout(() => popup.remove(), 1000);
+            }
+
+            update() {
+                this.time += 0.016;
+
+                // Update bubbles
+                this.bubbles.forEach((bubble, index) => {
+                    bubble.y -= bubble.speed;
+                    bubble.wobble += 0.02;
+                    bubble.x += Math.sin(bubble.wobble) * 0.5;
+
+                    if (bubble.y < -10) {
+                        this.bubbles.splice(index, 1);
+                        this.addBubble();
+                    }
+                });
+
+                // Update fish
+                const settings = DIFFICULTY_SETTINGS[this.difficulty];
+                this.fish.forEach(fish => {
+                    fish.update(this.fish, this.handPosition, this.handSpeed, settings, this.canvas);
+                });
+
+                // Check for catches
+                this.checkCatch();
+            }
+
+            draw() {
+                // Clear canvas
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw gradient background
+                const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+                gradient.addColorStop(0, '#001a33');
+                gradient.addColorStop(0.5, '#003d66');
+                gradient.addColorStop(1, '#004d73');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw light shafts
+                this.drawLightShafts();
+
+                // Draw seaweed
+                this.drawSeaweed();
+
+                // Draw bubbles
+                this.drawBubbles();
+
+                // Draw fish
+                this.fish.forEach(fish => fish.draw(this.ctx));
+
+                // Draw hand indicator
+                if (this.handPosition) {
+                    this.drawHandIndicator();
+                }
+            }
+
+            drawLightShafts() {
+                const ctx = this.ctx;
+                ctx.save();
+
+                for (let i = 0; i < 5; i++) {
+                    const x = (i / 4) * this.canvas.width;
+                    const gradient = ctx.createLinearGradient(x, 0, x, this.canvas.height);
+                    gradient.addColorStop(0, 'rgba(135, 206, 250, 0.1)');
+                    gradient.addColorStop(0.5, 'rgba(135, 206, 250, 0.03)');
+                    gradient.addColorStop(1, 'rgba(135, 206, 250, 0)');
+
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(x - 30, 0, 60, this.canvas.height);
+                }
+
+                ctx.restore();
+            }
+
+            drawSeaweed() {
+                const ctx = this.ctx;
+
+                this.seaweed.forEach(weed => {
+                    ctx.save();
+                    ctx.translate(weed.x, this.canvas.height);
+
+                    ctx.strokeStyle = 'rgba(46, 125, 50, 0.6)';
+                    ctx.lineWidth = 4;
+                    ctx.lineCap = 'round';
+
+                    const segmentHeight = weed.height / weed.segments;
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+
+                    for (let i = 1; i <= weed.segments; i++) {
+                        const offset = Math.sin(this.time * weed.speed + weed.phase + i * 0.3) * (i * 2);
+                        ctx.lineTo(offset, -i * segmentHeight);
+                    }
+
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+
+            drawBubbles() {
+                const ctx = this.ctx;
+
+                this.bubbles.forEach(bubble => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(bubble.x, bubble.y, bubble.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = 'rgba(135, 206, 250, 0.3)';
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.restore();
+                });
+            }
+
+            drawHandIndicator() {
+                const ctx = this.ctx;
+                const pos = this.handPosition;
+
+                // Calculate color based on speed
+                const speedRatio = Math.min(this.handSpeed / 20, 1);
+                const hue = 180 - (speedRatio * 180); // Cyan (180) to Red (0)
+
+                // Ring size and glow based on speed
+                const baseRadius = 40;
+                const radius = baseRadius + (speedRatio * 20);
+                const strokeWidth = 3 + (speedRatio * 2);
+                const glowIntensity = 0.3 + (speedRatio * 0.5);
+
+                ctx.save();
+
+                // Glow effect
+                ctx.shadowColor = `hsla(${hue}, 100%, 50%, ${glowIntensity})`;
+                ctx.shadowBlur = 20 + (speedRatio * 20);
+
+                // Main ring
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+                ctx.lineWidth = strokeWidth;
+                ctx.stroke();
+
+                // Warning ripples for fast movement
+                if (speedRatio > 0.6) {
+                    for (let i = 0; i < 3; i++) {
+                        const rippleRadius = radius + (i * 15) + (this.time * 30 % 45);
+                        const rippleOpacity = (1 - (this.time * 30 % 45) / 45) * 0.5;
+
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, rippleRadius, 0, Math.PI * 2);
+                        ctx.strokeStyle = `rgba(255, 0, 0, ${rippleOpacity})`;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+                }
+
+                // Fist grab effect
+                if (this.isFist) {
+                    const meshRadius = radius * 0.6;
+                    const meshSegments = 8;
+
+                    ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+                    ctx.lineWidth = 2;
+
+                    // Radial lines
+                    for (let i = 0; i < meshSegments; i++) {
+                        const angle = (Math.PI * 2 / meshSegments) * i;
+                        const x1 = pos.x + Math.cos(angle) * (meshRadius * 0.3);
+                        const y1 = pos.y + Math.sin(angle) * (meshRadius * 0.3);
+                        const x2 = pos.x + Math.cos(angle) * meshRadius;
+                        const y2 = pos.y + Math.sin(angle) * meshRadius;
+
+                        ctx.beginPath();
+                        ctx.moveTo(x1, y1);
+                        ctx.lineTo(x2, y2);
+                        ctx.stroke();
+                    }
+
+                    // Concentric circles
+                    for (let i = 1; i <= 3; i++) {
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, (meshRadius / 3) * i, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.restore();
+            }
+
+            animate() {
+                this.update();
+                this.draw();
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // Fish Class with State Machine
+        class Fish {
+            constructor(x, y, perlin, id) {
+                this.x = x;
+                this.y = y;
+                this.perlin = perlin;
+                this.id = id;
+
+                // Movement
+                this.vx = 0;
+                this.vy = 0;
+                this.angle = Math.random() * Math.PI * 2;
+                this.targetAngle = this.angle;
+                this.speed = 0;
+                this.maxSpeed = 2;
+
+                // Individual characteristics
+                this.tension = 0.3 + Math.random() * 0.7; // How easily spooked
+                this.laziness = 0.5 + Math.random() * 0.5; // How much it resists moving
+                this.speedCoeff = 0.8 + Math.random() * 0.4;
+
+                // State machine
+                this.state = 'resting';
+                this.stateTime = 0;
+                this.restDuration = 2 + Math.random() * 3;
+
+                // Visual
+                this.tailPhase = Math.random() * Math.PI * 2;
+                this.pupilSize = 1;
+                this.glowIntensity = 0.3;
+                this.bodyLength = 30 + Math.random() * 20;
+                this.bodyHeight = this.bodyLength * 0.6;
+
+                // Catch state
+                this.isCaught = false;
+                this.catchTime = 0;
+
+                // Noise offset
+                this.noiseOffsetX = Math.random() * 1000;
+                this.noiseOffsetY = Math.random() * 1000;
+            }
+
+            update(allFish, handPos, handSpeed, settings, canvas) {
+                if (this.isCaught) {
+                    this.catchTime += 0.016;
+                    if (this.catchTime > 2) {
+                        // Respawn
+                        this.respawn(canvas);
+                    }
+                    return;
+                }
+
+                this.stateTime += 0.016;
+
+                // Calculate threat level
+                let threatLevel = 0;
+                if (handPos) {
+                    const dx = this.x - handPos.x;
+                    const dy = this.y - handPos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // Speed multiplier
+                    const speedMultiplier = Math.min(handSpeed / settings.slowSpeedThreshold, 1);
+                    const threatMultiplier = 0.05 + (speedMultiplier * 0.95);
+
+                    if (distance < settings.alertRadius) {
+                        threatLevel = (1 - distance / settings.alertRadius) * threatMultiplier * settings.sensitivity * this.tension;
+                    }
+                }
+
+                // State transitions
+                this.updateState(threatLevel, handPos, settings);
+
+                // Behavior based on state
+                this.behaviorByState(handPos, settings);
+
+                // Apply separation force
+                this.applySeparation(allFish);
+
+                // Boundary forces
+                this.applyBoundaryForces(canvas);
+
+                // Turn then move (no sideways sliding)
+                this.smoothTurn();
+
+                // Apply velocity
+                this.vx = Math.cos(this.angle) * this.speed * this.speedCoeff;
+                this.vy = Math.sin(this.angle) * this.speed * this.speedCoeff;
+
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Update visuals
+                this.updateVisuals();
+            }
+
+            updateState(threatLevel, handPos, settings) {
+                switch (this.state) {
+                    case 'resting':
+                        if (threatLevel > 0.3) {
+                            this.state = 'fleeing';
+                        } else if (this.stateTime > this.restDuration) {
+                            this.state = 'cruising';
+                            this.stateTime = 0;
+                        }
+                        break;
+
+                    case 'cruising':
+                        if (threatLevel > 0.3) {
+                            this.state = 'fleeing';
+                        } else if (threatLevel > 0.1) {
+                            this.state = 'alert';
+                        } else if (this.stateTime > 3 + Math.random() * 2) {
+                            this.state = 'resting';
+                            this.stateTime = 0;
+                            this.restDuration = 2 + Math.random() * 3;
+                        }
+                        break;
+
+                    case 'alert':
+                        if (threatLevel > 0.4) {
+                            this.state = 'fleeing';
+                        } else if (threatLevel < 0.05) {
+                            this.state = 'cruising';
+                        }
+                        break;
+
+                    case 'fleeing':
+                        if (threatLevel < 0.1) {
+                            this.state = 'alert';
+                            this.stateTime = 0;
+                        }
+                        break;
+                }
+            }
+
+            behaviorByState(handPos, settings) {
+                switch (this.state) {
+                    case 'resting':
+                        this.maxSpeed = 0.5 / this.laziness;
+                        this.wander();
+                        this.pupilSize = 0.8;
+                        this.glowIntensity = 0.3;
+                        break;
+
+                    case 'cruising':
+                        this.maxSpeed = 1.5 / this.laziness;
+                        this.wander();
+                        this.pupilSize = 1;
+                        this.glowIntensity = 0.4;
+                        break;
+
+                    case 'alert':
+                        this.maxSpeed = 2 / this.laziness;
+                        if (handPos) {
+                            this.lookAt(handPos);
+                        }
+                        this.pupilSize = 0.6;
+                        this.glowIntensity = 0.5;
+                        break;
+
+                    case 'fleeing':
+                        this.maxSpeed = (3 + settings.escapeSpeed) / this.laziness;
+                        if (handPos) {
+                            this.fleeFrom(handPos);
+                        }
+                        this.pupilSize = 0.3; // Contracted pupils
+                        this.glowIntensity = 0.7; // Fear response
+                        break;
+                }
+
+                // Accelerate/decelerate
+                const accel = this.state === 'fleeing' ? 0.3 : 0.1;
+                const decel = 0.05;
+
+                if (this.speed < this.maxSpeed) {
+                    this.speed += accel;
+                } else {
+                    this.speed -= decel;
+                }
+
+                this.speed = Math.max(0, Math.min(this.speed, this.maxSpeed));
+            }
+
+            wander() {
+                // Use Perlin noise for natural movement
+                const noiseX = this.perlin.noise(this.noiseOffsetX, 0) * Math.PI * 2;
+                const noiseY = this.perlin.noise(0, this.noiseOffsetY) * Math.PI * 2;
+
+                this.targetAngle = Math.atan2(noiseY, noiseX);
+
+                this.noiseOffsetX += 0.005;
+                this.noiseOffsetY += 0.005;
+            }
+
+            lookAt(target) {
+                const dx = target.x - this.x;
+                const dy = target.y - this.y;
+                this.targetAngle = Math.atan2(dy, dx);
+            }
+
+            fleeFrom(threat) {
+                const dx = this.x - threat.x;
+                const dy = this.y - threat.y;
+                this.targetAngle = Math.atan2(dy, dx);
+            }
+
+            smoothTurn() {
+                // Normalize angle difference
+                let angleDiff = this.targetAngle - this.angle;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+                // Turn rate based on state
+                const turnRate = this.state === 'fleeing' ? 0.15 : 0.05;
+                this.angle += angleDiff * turnRate;
+            }
+
+            applySeparation(allFish) {
+                const separationDist = 60;
+                let separationX = 0;
+                let separationY = 0;
+
+                allFish.forEach(other => {
+                    if (other !== this && !other.isCaught) {
+                        const dx = this.x - other.x;
+                        const dy = this.y - other.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < separationDist && dist > 0) {
+                            const force = (separationDist - dist) / separationDist;
+                            separationX += (dx / dist) * force;
+                            separationY += (dy / dist) * force;
+                        }
+                    }
+                });
+
+                if (separationX !== 0 || separationY !== 0) {
+                    const separationAngle = Math.atan2(separationY, separationX);
+                    this.targetAngle = separationAngle;
+                }
+            }
+
+            applyBoundaryForces(canvas) {
+                const margin = 100;
+                const turnForce = 0.1;
+
+                if (this.x < margin) {
+                    this.targetAngle = 0; // Turn right
+                } else if (this.x > canvas.width - margin) {
+                    this.targetAngle = Math.PI; // Turn left
+                }
+
+                if (this.y < margin) {
+                    this.targetAngle = Math.PI / 2; // Turn down
+                } else if (this.y > canvas.height - margin) {
+                    this.targetAngle = -Math.PI / 2; // Turn up
+                }
+
+                // Hard boundaries
+                this.x = Math.max(0, Math.min(this.x, canvas.width));
+                this.y = Math.max(0, Math.min(this.y, canvas.height));
+            }
+
+            updateVisuals() {
+                // Tail animation based on speed
+                const tailSpeed = 0.1 + (this.speed / this.maxSpeed) * 0.3;
+                this.tailPhase += tailSpeed;
+            }
+
+            catch() {
+                this.isCaught = true;
+                this.catchTime = 0;
+            }
+
+            respawn(canvas) {
+                this.isCaught = false;
+                this.catchTime = 0;
+
+                // Respawn at random edge
+                const edge = Math.floor(Math.random() * 4);
+                switch (edge) {
+                    case 0: // Top
+                        this.x = Math.random() * canvas.width;
+                        this.y = -50;
+                        break;
+                    case 1: // Right
+                        this.x = canvas.width + 50;
+                        this.y = Math.random() * canvas.height;
+                        break;
+                    case 2: // Bottom
+                        this.x = Math.random() * canvas.width;
+                        this.y = canvas.height + 50;
+                        break;
+                    case 3: // Left
+                        this.x = -50;
+                        this.y = Math.random() * canvas.height;
+                        break;
+                }
+
+                this.state = 'cruising';
+                this.speed = this.maxSpeed * 0.5;
+            }
+
+            draw(ctx) {
+                if (this.isCaught) return;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.angle);
+
+                // Glow effect
+                ctx.shadowColor = `rgba(0, 200, 255, ${this.glowIntensity})`;
+                ctx.shadowBlur = 15;
+
+                // Body gradient
+                const gradient = ctx.createLinearGradient(-this.bodyLength / 2, 0, this.bodyLength / 2, 0);
+                gradient.addColorStop(0, '#4dd0e1');
+                gradient.addColorStop(0.5, '#26c6da');
+                gradient.addColorStop(1, '#00acc1');
+
+                // Body
+                ctx.beginPath();
+                ctx.ellipse(0, 0, this.bodyLength / 2, this.bodyHeight / 2, 0, 0, Math.PI * 2);
+                ctx.fillStyle = gradient;
+                ctx.fill();
+
+                // Tail
+                const tailSwing = Math.sin(this.tailPhase) * 0.3;
+                ctx.beginPath();
+                ctx.moveTo(this.bodyLength / 2, 0);
+                ctx.quadraticCurveTo(
+                    this.bodyLength / 2 + 15,
+                    tailSwing * 15,
+                    this.bodyLength / 2 + 25,
+                    tailSwing * 25
+                );
+                ctx.quadraticCurveTo(
+                    this.bodyLength / 2 + 15,
+                    -tailSwing * 15,
+                    this.bodyLength / 2,
+                    0
+                );
+                ctx.fillStyle = '#00acc1';
+                ctx.fill();
+
+                // Eye
+                ctx.beginPath();
+                ctx.arc(-this.bodyLength / 4, -this.bodyHeight / 4, 4, 0, Math.PI * 2);
+                ctx.fillStyle = 'white';
+                ctx.fill();
+
+                // Pupil
+                ctx.beginPath();
+                ctx.arc(-this.bodyLength / 4, -this.bodyHeight / 4, 2 * this.pupilSize, 0, Math.PI * 2);
+                ctx.fillStyle = 'black';
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        // Start game
+        window.addEventListener('load', () => {
+            new Game();
+        });
+    </script>
+</body>
+</html>
