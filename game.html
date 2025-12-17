@@ -458,14 +458,18 @@
 
             async loadMp3Ambience() {
                 return new Promise((resolve, reject) => {
-                    // Create audio element
-                    this.mp3Audio = new Audio('海底水流涌动音效.mp3');
-                    this.mp3Audio.loop = true;
-                    this.mp3Audio.volume = this.isMuted ? 0 : this.volume;
+                    console.log('Attempting to load MP3 file...');
 
-                    // Handle load success
-                    this.mp3Audio.addEventListener('canplaythrough', () => {
-                        // Create media source node
+                    // Create audio element
+                    this.mp3Audio = new Audio();
+                    this.mp3Audio.src = '海底水流涌动音效.mp3';
+                    this.mp3Audio.loop = true;
+                    this.mp3Audio.crossOrigin = 'anonymous';
+                    this.mp3Audio.volume = 1.0; // Set to max, control via gain node
+                    console.log('Audio element created with src:', this.mp3Audio.src);
+
+                    // Create media source node BEFORE loading
+                    try {
                         this.mp3Source = this.context.createMediaElementSource(this.mp3Audio);
                         this.mp3Gain = this.context.createGain();
                         this.mp3Gain.gain.value = 0.6; // MP3 volume level
@@ -473,17 +477,31 @@
                         // Connect to audio chain
                         this.mp3Source.connect(this.mp3Gain);
                         this.mp3Gain.connect(this.ambienceGain);
+                        console.log('Audio chain connected');
+                    } catch (error) {
+                        console.error('Error creating media source:', error);
+                        reject(error);
+                        return;
+                    }
 
+                    // Handle load success
+                    this.mp3Audio.addEventListener('canplaythrough', () => {
+                        console.log('MP3 file loaded successfully');
                         // Play the audio
                         this.mp3Audio.play().then(() => {
+                            console.log('MP3 playback started');
                             this.useMp3 = true;
                             resolve();
-                        }).catch(reject);
+                        }).catch(error => {
+                            console.error('Playback error:', error);
+                            reject(error);
+                        });
                     }, { once: true });
 
                     // Handle load error
                     this.mp3Audio.addEventListener('error', (e) => {
-                        reject(new Error('MP3 file not found'));
+                        console.error('MP3 load error:', e);
+                        reject(new Error('MP3 file not found or failed to load'));
                     }, { once: true });
 
                     // Start loading
@@ -607,6 +625,7 @@
                 // Also update MP3 volume if using MP3
                 if (this.mp3Audio) {
                     this.mp3Audio.volume = this.isMuted ? 0 : value;
+                    console.log('MP3 volume set to:', this.mp3Audio.volume);
                 }
             }
 
@@ -723,7 +742,7 @@
             async initAudio() {
                 await this.audioManager.init();
                 await this.audioManager.resume();
-                this.audioManager.startAmbience();
+                await this.audioManager.startAmbience();
             }
 
             initEnvironment() {
